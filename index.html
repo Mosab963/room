@@ -3,7 +3,6 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-<!-- منع التخزين المؤقت تماماً لضمان تحديث الأوامر فوراً -->
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
@@ -39,7 +38,7 @@
 
   body.dark-mode {
     --bg-base: #060913;
-    --bg-card: rgba(15, 23, 42, 0.85);
+    --bg-card: rgba(15, 23, 42, 0.88);
     --border-card: rgba(56, 189, 248, 0.22);
     --text-main: #f8fafc;
     --text-muted: #94a3b8;
@@ -54,7 +53,7 @@
     background-color: var(--bg-base);
     color: var(--text-main);
     min-height: 100vh;
-    padding-bottom: 110px;
+    padding-bottom: 120px;
     -webkit-tap-highlight-color: transparent;
     user-select: none;
     overflow-x: hidden;
@@ -69,14 +68,14 @@
   }
 
   .view-transition {
-    animation: fastFadeSlide 0.22s ease-out forwards;
-    will-change: transform, opacity;
+    animation: fastFadeSlide 0.18s ease-out forwards;
   }
   @keyframes fastFadeSlide {
-    from { opacity: 0; transform: translateY(6px); }
+    from { opacity: 0; transform: translateY(4px); }
     to { opacity: 1; transform: translateY(0); }
   }
 
+  /* شاشة الدخول */
   .login-wrapper {
     min-height: 100vh;
     display: flex;
@@ -85,7 +84,6 @@
     align-items: center;
     padding: 20px;
     position: relative;
-    overflow: hidden;
     background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
   }
   body.dark-mode .login-wrapper {
@@ -102,8 +100,6 @@
     padding: 38px 28px;
     box-shadow: var(--shadow-soft);
     text-align: center;
-    position: relative;
-    z-index: 2;
   }
   .login-logo-box {
     width: 80px;
@@ -133,6 +129,7 @@
   }
   .pin-input-custom:focus { border-color: var(--primary-accent); }
 
+  /* الترويسة */
   .app-header {
     background: var(--bg-card);
     border-bottom: 1px solid var(--border-card);
@@ -196,6 +193,7 @@
     cursor: pointer;
   }
 
+  /* زر الكرات العائمة السريعة (FAB) */
   .fab-container {
     position: fixed;
     bottom: 24px;
@@ -206,13 +204,12 @@
     flex-direction: column;
     align-items: center;
   }
-
   .fab-menu {
     position: absolute;
     bottom: 65px;
     display: flex;
     gap: 10px;
-    background: rgba(15, 23, 42, 0.9);
+    background: rgba(15, 23, 42, 0.92);
     backdrop-filter: blur(14px);
     padding: 8px 12px;
     border-radius: 30px;
@@ -221,18 +218,17 @@
     opacity: 0;
     pointer-events: none;
     transform: translateY(15px) scale(0.85);
-    transition: all 0.25s var(--spring-ease);
+    transition: all 0.2s var(--spring-ease);
   }
   .fab-container.open .fab-menu {
     opacity: 1;
     pointer-events: auto;
     transform: translateY(0) scale(1);
   }
-
   .fab-ball-item {
-    background: var(--bg-card);
-    border: 1.5px solid var(--border-card);
-    color: var(--text-main);
+    background: #1e293b;
+    border: 1.5px solid rgba(255,255,255,0.15);
+    color: #fff;
     padding: 8px 14px;
     border-radius: 20px;
     font-size: 12px;
@@ -241,10 +237,9 @@
     display: flex;
     align-items: center;
     gap: 6px;
-    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.2);
   }
-  .fab-ball-item.active { background: var(--primary-accent); color: #fff; border-color: var(--primary-accent); }
-
+  .fab-ball-item.active { background: var(--primary-accent); border-color: var(--primary-accent); }
   .fab-main-ball {
     width: 62px;
     height: 62px;
@@ -256,7 +251,8 @@
     color: #fff;
     font-size: 26px;
     cursor: pointer;
-    border: 2px solid rgba(255,255,255,0.4);
+    border: 2px solid rgba(255,255,255,0.5);
+    transition: transform 0.2s var(--spring-ease);
   }
   .fab-container.open .fab-main-ball { transform: rotate(45deg); }
 
@@ -276,7 +272,7 @@
     overflow: hidden;
     border: 1px solid var(--border-card);
   }
-  .progress-fill { background: var(--success); height: 100%; width: 0%; border-radius: 20px; transition: width 0.4s ease; }
+  .progress-fill { background: var(--success); height: 100%; width: 0%; border-radius: 20px; transition: width 0.3s ease; }
 
   .room-grid {
     display: grid;
@@ -459,7 +455,7 @@
     max-height: 86vh;
     overflow-y: auto;
     transform: translateY(100%);
-    transition: transform 0.28s var(--sheet-ease);
+    transition: transform 0.25s var(--sheet-ease);
     box-shadow: 0 -15px 40px rgba(0,0,0,0.2);
   }
   .modal-overlay.active .modal-sheet { transform: translateY(0); }
@@ -532,7 +528,6 @@
     <header class="app-header">
       <div class="header-content">
         <div style="display: flex; align-items: center; gap: 8px;">
-          <!-- زر الوضع الليلي في الزاوية اليسرى العليا -->
           <button class="top-icon-btn" onclick="toggleDarkMode()" title="تغيير الثيم (ليلي/نهاري)">🌓</button>
           <div class="header-title-box">
             <small>نظام الرقابة وإدارة العهد</small>
@@ -544,7 +539,6 @@
           <div id="currentUserBadge" class="user-badge">المستخدم</div>
         </div>
       </div>
-      <!-- شريط الذكر اليومي في الزاوية العلوية اليمنى -->
       <div id="dailyDhikrBox" class="dhikr-banner">
         <span>📿</span> <span id="dhikrText">سبحان الله وبحمده، سبحان الله العظيم</span>
       </div>
@@ -552,7 +546,7 @@
 
     <main class="content" id="appView"></main>
 
-    <!-- منظومة الكرات المتفجرة العائمة للتبويبات -->
+    <!-- قائمة الكرات المتفجرة السريعة (FAB) -->
     <div class="fab-container" id="fabContainer">
       <div class="fab-menu" id="fabMenu">
         <button class="fab-ball-item active" id="tabBtnTour" onclick="navigate('tour', this)"><span>📋</span> جولة الجرد</button>
@@ -645,7 +639,9 @@ const firebaseConfig = {
   measurementId: "G-LZM4PRCS5X"
 };
 
-firebase.initializeApp(firebaseConfig);
+if (!firebase.apps.length) {
+  firebase.initializeApp(firebaseConfig);
+}
 const dbFirestore = firebase.firestore();
 
 try {
@@ -732,7 +728,7 @@ function updateNetworkUI() {
   if (navigator.onLine) {
     text.textContent = 'متصل بالسحاب 🟢';
   } else {
-    text.textContent = 'أوفلاين (يتم الحفظ بالهاتف) 📡';
+    text.textContent = 'أوفلاين 📡';
   }
 }
 
@@ -1060,7 +1056,7 @@ function openRoomAuditModal(roomId) {
               </div>
               <select id="state_${itm.id}" onchange="toggleItemExtraFields(${itm.id})" style="width:130px; font-size:12px; padding:8px; border-radius:10px;">
                 <option value="ok">مطابق ✅</option>
-                <option value="missing">نقص بالكمية ⚠️</option>
+                <option value="missing">نقص بالكمية ⚠️️</option>
                 <option value="empty">مفقود بالكامل ❌</option>
                 <option value="damaged">تالف / كسر 🛠️</option>
                 <option value="maintenance">قيد الصيانة 🔄</option>
@@ -1230,12 +1226,11 @@ function submitFullWarehouseAudit() {
   });
 }
 
-// 2. لوحة الإدارة (مع تبويبات فرعية مفصولة تماماً للغرف والأشخاص لتفادي التمرير الطويل)
+// 2. لوحة الإدارة مع التبويبات الداخلية المفصولة
 function renderRoomsReference() {
   const pendingSurplus = surplusData.filter(s => s.status === 'pending');
 
   let html = `
-    <!-- بطاقة أمان حساب المدير -->
     <div class="card" style="border-color:rgba(16, 185, 129, 0.4); background:var(--success-bg);">
       <div style="display:flex; justify-content:space-between; align-items:center;">
         <div>
@@ -1252,7 +1247,6 @@ function renderRoomsReference() {
       </div>
     </div>`;
 
-  // مركز المواد الزائدة السحابي
   html += `
     <div class="card" style="border: 1px solid ${pendingSurplus.length > 0 ? 'var(--primary-accent)' : 'var(--border-card)'}; background: var(--bg-card);">
       <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
@@ -1288,7 +1282,7 @@ function renderRoomsReference() {
   }
   html += `</div>`;
 
-  // 🔴 التبويبات الداخلية في صفحة الإدارة (فصل تام بين الغرف والموظفين) 🔴
+  // التبويبات الداخلية المفصولة
   html += `
     <div style="display:flex; gap:8px; margin: 20px 0 14px; background:var(--bg-card); padding:6px; border-radius:18px; border:1px solid var(--border-card);">
       <button class="btn-full ${adminSubTab==='rooms'?'btn-primary':'btn-light'}" style="border-radius:12px; padding:10px;" onclick="adminSubTab='rooms'; renderRoomsReference();">🚪 إدارة غرف المستودع (${roomsData.length})</button>
@@ -1744,7 +1738,7 @@ function openEditItemModal(roomId, itemId) {
     
     <label>قسم / قطاع العهدة:</label>
     <select id="editItemSector">
-      <option value="أثاث ومفروشات" ${(itm.sector||'أثاث ومفروشات')==='أثاث ومفروشات'?'selected':''}>أثاث ومفروشات 🛏️️</option>
+      <option value="أثاث ومفروشات" ${(itm.sector||'أثاث ومفروشات')==='أثاث ومفروشات'?'selected':''}>أثاث ومفروشات 🛏️</option>
       <option value="أجهزة وتقنية" ${itm.sector==='أجهزة وتقنية'?'selected':''}>أجهزة وتقنية 💻</option>
       <option value="تجهيزات عامة" ${itm.sector==='تجهيزات عامة'?'selected':''}>تجهيزات عامة 📦</option>
     </select>
