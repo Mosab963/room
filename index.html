@@ -455,7 +455,7 @@
     max-height: 86vh;
     overflow-y: auto;
     transform: translateY(100%);
-    transition: transform 0.25s var(--sheet-ease);
+    transition: transform 0.28s var(--sheet-ease);
     box-shadow: 0 -15px 40px rgba(0,0,0,0.2);
   }
   .modal-overlay.active .modal-sheet { transform: translateY(0); }
@@ -1056,7 +1056,7 @@ function openRoomAuditModal(roomId) {
               </div>
               <select id="state_${itm.id}" onchange="toggleItemExtraFields(${itm.id})" style="width:130px; font-size:12px; padding:8px; border-radius:10px;">
                 <option value="ok">مطابق ✅</option>
-                <option value="missing">نقص بالكمية ⚠️️</option>
+                <option value="missing">نقص بالكمية ⚠️</option>
                 <option value="empty">مفقود بالكامل ❌</option>
                 <option value="damaged">تالف / كسر 🛠️</option>
                 <option value="maintenance">قيد الصيانة 🔄</option>
@@ -1226,7 +1226,7 @@ function submitFullWarehouseAudit() {
   });
 }
 
-// 2. لوحة الإدارة مع التبويبات الداخلية المفصولة
+// 2. لوحة الإدارة (مع فك التجميد وتصحيح استجابة أزرار الإدارة)
 function renderRoomsReference() {
   const pendingSurplus = surplusData.filter(s => s.status === 'pending');
 
@@ -1247,6 +1247,7 @@ function renderRoomsReference() {
       </div>
     </div>`;
 
+  // مركز المواد الزائدة السحابي
   html += `
     <div class="card" style="border: 1px solid ${pendingSurplus.length > 0 ? 'var(--primary-accent)' : 'var(--border-card)'}; background: var(--bg-card);">
       <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
@@ -1448,17 +1449,15 @@ function saveUserUpdates(userId) {
 
   if (!name || !pin) return;
 
-  requireAdminVerification(() => {
-    dbFirestore.collection('warehouse_users').doc(userId).update({
-      name: name,
-      role: role,
-      sector: sector,
-      pin: pin
-    }).then(() => {
-      alert('تم تحديث بيانات وتخصص الموظف بنجاح!');
-      closeModal();
-      openUserProfileModal(userId);
-    });
+  dbFirestore.collection('warehouse_users').doc(userId).update({
+    name: name,
+    role: role,
+    sector: sector,
+    pin: pin
+  }).then(() => {
+    alert('تم تحديث بيانات وتخصص الموظف بنجاح!');
+    closeModal();
+    openUserProfileModal(userId);
   });
 }
 
@@ -1472,32 +1471,28 @@ function adoptSurplusItem(surplusId, roomId, roomName, sector) {
     return;
   }
 
-  requireAdminVerification(() => {
-    const updatedItems = room.items || [];
-    updatedItems.push({
-      id: Date.now(),
-      name: item.itemName,
-      qty: 1,
-      icon: sector === 'أجهزة وتقنية' ? '💻' : '📦',
-      sector: sector || 'أثاث ومفروشات',
-      isSerialized: false
-    });
+  const updatedItems = room.items || [];
+  updatedItems.push({
+    id: Date.now(),
+    name: item.itemName,
+    qty: 1,
+    icon: sector === 'أجهزة وتقنية' ? '💻' : '📦',
+    sector: sector || 'أثاث ومفروشات',
+    isSerialized: false
+  });
 
-    const batch = dbFirestore.batch();
-    batch.update(dbFirestore.collection('warehouse_rooms').doc(room.id), { items: updatedItems });
-    batch.update(dbFirestore.collection('warehouse_surplus').doc(surplusId), { status: 'adopted' });
+  const batch = dbFirestore.batch();
+  batch.update(dbFirestore.collection('warehouse_rooms').doc(room.id), { items: updatedItems });
+  batch.update(dbFirestore.collection('warehouse_surplus').doc(surplusId), { status: 'adopted' });
 
-    batch.commit().then(() => {
-      alert(`تم بنجاح اعتماد [${item.itemName}] في قطاع (${sector}) بغرفة ${room.name}!`);
-    });
+  batch.commit().then(() => {
+    alert(`تم بنجاح اعتماد [${item.itemName}] في قطاع (${sector}) بغرفة ${room.name}!`);
   });
 }
 
 function dismissSurplusItem(surplusId) {
-  requireAdminVerification(() => {
-    dbFirestore.collection('warehouse_surplus').doc(surplusId).update({ status: 'dismissed' }).then(() => {
-      alert('تم إغلاق البلاغ بنجاح.');
-    });
+  dbFirestore.collection('warehouse_surplus').doc(surplusId).update({ status: 'dismissed' }).then(() => {
+    alert('تم إغلاق البلاغ بنجاح.');
   });
 }
 
@@ -1583,11 +1578,9 @@ function saveRoomName(roomId) {
   const newName = document.getElementById('renameRoomInput').value.trim();
   if (!newName) return;
 
-  requireAdminVerification(() => {
-    dbFirestore.collection('warehouse_rooms').doc(roomId).update({ name: newName }).then(() => {
-      alert('تم تعديل اسم الغرفة بنجاح!');
-      closeModal();
-    });
+  dbFirestore.collection('warehouse_rooms').doc(roomId).update({ name: newName }).then(() => {
+    alert('تم تعديل اسم الغرفة بنجاح!');
+    closeModal();
   });
 }
 
@@ -1604,14 +1597,12 @@ function saveRoomNameAndIcon(roomId) {
   const newIcon = document.getElementById('editRoomSelectedIcon').value.trim() || '🚪';
   if (!newName) return;
 
-  requireAdminVerification(() => {
-    dbFirestore.collection('warehouse_rooms').doc(roomId).update({
-      name: newName,
-      icon: newIcon
-    }).then(() => {
-      alert('تم تحديث اسم وأيقونة الغرفة بنجاح!');
-      closeModal();
-    });
+  dbFirestore.collection('warehouse_rooms').doc(roomId).update({
+    name: newName,
+    icon: newIcon
+  }).then(() => {
+    alert('تم تحديث اسم وأيقونة الغرفة بنجاح!');
+    closeModal();
   });
 }
 
@@ -1772,6 +1763,92 @@ function toggleEditSerialInputs(isSerialized) {
   document.getElementById('editSerialQtyBox').style.display = isSerialized ? 'block' : 'none';
 }
 
+function saveItemToRoom(roomId) {
+  const room = roomsData.find(r => r.id === roomId);
+  if (!room) return;
+
+  const name = document.getElementById('newItemName').value.trim();
+  const icon = document.getElementById('newItemIcon').value.trim() || '📦';
+  const sector = document.getElementById('newItemSector').value;
+  const isSerialized = document.getElementById('newItemIsSerialized').checked;
+
+  if (!name) return;
+
+  let qty = 1;
+  let serials = [];
+
+  if (isSerialized) {
+    const rawSerials = document.getElementById('newItemSerials').value.trim();
+    serials = rawSerials.split(/[,،]+/).map(s => s.trim()).filter(Boolean);
+    if (serials.length === 0) {
+      alert('يرجى إدخال رقم تسلسلي واحد على الأقل!');
+      return;
+    }
+    qty = serials.length;
+  } else {
+    qty = parseInt(document.getElementById('newItemQty').value, 10) || 1;
+  }
+
+  const updatedItems = room.items || [];
+  updatedItems.push({
+    id: Date.now(),
+    name: name,
+    qty: qty,
+    icon: icon,
+    sector: sector,
+    isSerialized: isSerialized,
+    serials: serials
+  });
+
+  dbFirestore.collection('warehouse_rooms').doc(roomId).update({ items: updatedItems }).then(() => {
+    openEditRoomItemsModal(roomId);
+  });
+}
+
+function updateItemInRoom(roomId, itemId) {
+  const room = roomsData.find(r => r.id === roomId);
+  if (!room) return;
+
+  const name = document.getElementById('editItemName').value.trim();
+  const icon = document.getElementById('editItemIcon').value.trim() || '📦';
+  const sector = document.getElementById('editItemSector').value;
+  const isSerialized = document.getElementById('editItemIsSerialized').checked;
+
+  if (!name) return;
+
+  let qty = 1;
+  let serials = [];
+
+  if (isSerialized) {
+    const rawSerials = document.getElementById('editItemSerials').value.trim();
+    serials = rawSerials.split(/[,،]+/).map(s => s.trim()).filter(Boolean);
+    qty = serials.length;
+  } else {
+    qty = parseInt(document.getElementById('editItemQty').value, 10) || 1;
+  }
+
+  const updatedItems = (room.items || []).map(itm => {
+    if (itm.id === itemId) return { ...itm, name, qty, icon, sector, isSerialized, serials };
+    return itm;
+  });
+
+  dbFirestore.collection('warehouse_rooms').doc(roomId).update({ items: updatedItems }).then(() => {
+    openEditRoomItemsModal(roomId);
+  });
+}
+
+function deleteItemFromRoom(roomId, itemId) {
+  if (!confirm('حذف هذا الغرض نهائياً من عهدة الغرفة؟')) return;
+
+  const room = roomsData.find(r => r.id === roomId);
+  if (!room) return;
+
+  const updatedItems = (room.items || []).filter(i => i.id !== itemId);
+  dbFirestore.collection('warehouse_rooms').doc(roomId).update({ items: updatedItems }).then(() => {
+    openEditRoomItemsModal(roomId);
+  });
+}
+
 function openAddUserModal() {
   openModal('إضافة مستخدم جديد وتحديد قطاعه', `
     <label>اسم الشخص</label>
@@ -1798,6 +1875,24 @@ function openAddUserModal() {
       <button class="btn-primary btn-full" onclick="saveNewStaff()">حفظ المستخدم ✓</button>
     </div>
   `);
+}
+
+function saveNewStaff() {
+  const name = document.getElementById('newStaffName').value.trim();
+  const role = document.getElementById('newStaffRole').value;
+  const sector = document.getElementById('newStaffSector').value;
+  const pin = document.getElementById('newStaffPin').value.trim();
+  if (!name || !pin) return;
+
+  dbFirestore.collection('warehouse_users').add({
+    name: name,
+    role: role,
+    sector: sector,
+    pin: pin
+  }).then(() => {
+    closeModal();
+    renderRoomsReference();
+  });
 }
 
 // 3. السجلات والتقارير
