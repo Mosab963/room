@@ -1,0 +1,2243 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<meta http-equiv="Pragma" content="no-cache">
+<meta http-equiv="Expires" content="0">
+<title>نظام إدارة وجرد المستودع</title>
+
+<!-- خط Cairo العربي الاحترافي -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800;900&display=swap" rel="stylesheet">
+
+<!-- مكتبات Firebase السحابية -->
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
+
+<style>
+  :root {
+    --bg-base: #f1f5f9;
+    --bg-card: #ffffff;
+    --border-card: #cbd5e1;
+    --text-main: #0f172a;
+    --text-muted: #64748b;
+    --primary-accent: #2563eb;
+    --primary-gradient: linear-gradient(135deg, #1d4ed8 0%, #3b82f6 100%);
+    --success: #10b981;
+    --success-bg: #ecfdf5;
+    --danger: #ef4444;
+    --danger-bg: #fef2f2;
+    --warning: #f59e0b;
+    --shadow-soft: 0 10px 30px -5px rgba(15, 23, 42, 0.08);
+    --spring-ease: cubic-bezier(0.34, 1.56, 0.64, 1);
+    --sheet-ease: cubic-bezier(0.16, 1, 0.3, 1);
+  }
+
+  body.dark-mode {
+    --bg-base: #060913;
+    --bg-card: rgba(15, 23, 42, 0.88);
+    --border-card: rgba(56, 189, 248, 0.22);
+    --text-main: #f8fafc;
+    --text-muted: #94a3b8;
+    --primary-accent: #38bdf8;
+    --shadow-soft: 0 15px 40px rgba(0, 0, 0, 0.6);
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: 'Cairo', system-ui, sans-serif;
+    background-color: var(--bg-base);
+    color: var(--text-main);
+    min-height: 100vh;
+    padding-bottom: 120px;
+    -webkit-tap-highlight-color: transparent;
+    user-select: none;
+    overflow-x: hidden;
+    transition: background-color 0.3s ease, color 0.3s ease;
+  }
+
+  .container {
+    width: 100%;
+    max-width: 1050px;
+    margin: 0 auto;
+    padding: 0 16px;
+  }
+
+  .view-transition {
+    animation: fastFadeSlide 0.18s ease-out forwards;
+  }
+  @keyframes fastFadeSlide {
+    from { opacity: 0; transform: translateY(4px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  /* شاشة الدخول */
+  .login-wrapper {
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    padding: 20px;
+    position: relative;
+    background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
+  }
+  body.dark-mode .login-wrapper {
+    background: radial-gradient(circle at 50% 20%, #0f172a 0%, #060913 90%);
+  }
+
+  .login-card {
+    width: 100%;
+    max-width: 410px;
+    background: var(--bg-card);
+    backdrop-filter: blur(20px);
+    border: 1px solid var(--border-card);
+    border-radius: 30px;
+    padding: 38px 28px;
+    box-shadow: var(--shadow-soft);
+    text-align: center;
+  }
+  .login-logo-box {
+    width: 80px;
+    height: 80px;
+    background: rgba(37, 99, 235, 0.1);
+    border: 1px solid rgba(37, 99, 235, 0.2);
+    border-radius: 24px;
+    display: grid;
+    place-items: center;
+    font-size: 38px;
+    margin: 0 auto 16px;
+  }
+  .pin-input-custom {
+    width: 100%;
+    font-size: 28px;
+    letter-spacing: 12px;
+    text-align: center;
+    font-weight: 800;
+    padding: 14px;
+    margin: 20px 0;
+    border-radius: 16px;
+    border: 1.5px solid var(--border-card);
+    background: var(--bg-base);
+    color: var(--text-main);
+    outline: none;
+    transition: 0.2s;
+  }
+  .pin-input-custom:focus { border-color: var(--primary-accent); }
+
+  /* الترويسة */
+  .app-header {
+    background: var(--bg-card);
+    border-bottom: 1px solid var(--border-card);
+    padding: 18px 20px;
+    border-radius: 0 0 28px 28px;
+    box-shadow: var(--shadow-soft);
+    margin-bottom: 18px;
+    position: relative;
+  }
+  .header-content { display: flex; justify-content: space-between; align-items: center; }
+  .header-title-box small { font-size: 11px; color: var(--text-muted); font-weight: 800; }
+  .header-title-box h1 { font-size: 19px; font-weight: 900; color: var(--text-main); margin-top: 1px; }
+
+  .dhikr-banner {
+    background: rgba(37, 99, 235, 0.08);
+    border: 1px solid rgba(37, 99, 235, 0.2);
+    padding: 6px 12px;
+    border-radius: 14px;
+    font-size: 11px;
+    font-weight: 800;
+    color: var(--primary-accent);
+    margin-top: 6px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    max-width: 320px;
+  }
+
+  .header-actions { display: flex; align-items: center; gap: 6px; }
+  .top-icon-btn {
+    background: var(--bg-base);
+    border: 1px solid var(--border-card);
+    color: var(--text-main);
+    width: 36px;
+    height: 36px;
+    border-radius: 12px;
+    display: grid;
+    place-items: center;
+    cursor: pointer;
+    font-size: 16px;
+  }
+  .top-icon-btn:active { transform: scale(0.9); }
+
+  .user-badge {
+    background: var(--bg-base);
+    border: 1px solid var(--border-card);
+    padding: 5px 12px;
+    border-radius: 12px;
+    font-size: 12px;
+    font-weight: 800;
+    color: var(--primary-accent);
+  }
+  .logout-btn {
+    background: rgba(239, 68, 68, 0.1);
+    border: 1px solid rgba(239, 68, 68, 0.3);
+    color: var(--danger);
+    padding: 5px 10px;
+    border-radius: 12px;
+    font-size: 11px;
+    font-weight: 800;
+    cursor: pointer;
+  }
+
+  /* زر الكرات العائمة السريعة (FAB) */
+  .fab-container {
+    position: fixed;
+    bottom: 24px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 90;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
+  .fab-menu {
+    position: absolute;
+    bottom: 65px;
+    display: flex;
+    gap: 10px;
+    background: rgba(15, 23, 42, 0.92);
+    backdrop-filter: blur(14px);
+    padding: 8px 12px;
+    border-radius: 30px;
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    box-shadow: 0 15px 35px rgba(0,0,0,0.4);
+    opacity: 0;
+    pointer-events: none;
+    transform: translateY(15px) scale(0.85);
+    transition: all 0.2s var(--spring-ease);
+  }
+  .fab-container.open .fab-menu {
+    opacity: 1;
+    pointer-events: auto;
+    transform: translateY(0) scale(1);
+  }
+  .fab-ball-item {
+    background: #1e293b;
+    border: 1.5px solid rgba(255,255,255,0.15);
+    color: #fff;
+    padding: 8px 14px;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: 900;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+  }
+  .fab-ball-item.active { background: var(--primary-accent); border-color: var(--primary-accent); }
+  .fab-main-ball {
+    width: 62px;
+    height: 62px;
+    background: var(--primary-gradient);
+    border-radius: 50%;
+    box-shadow: 0 10px 25px rgba(37, 99, 235, 0.45);
+    display: grid;
+    place-items: center;
+    color: #fff;
+    font-size: 26px;
+    cursor: pointer;
+    border: 2px solid rgba(255,255,255,0.5);
+    transition: transform 0.2s var(--spring-ease);
+  }
+  .fab-container.open .fab-main-ball { transform: rotate(45deg); }
+
+  .progress-hero {
+    background: var(--bg-card);
+    border: 1px solid var(--border-card);
+    border-radius: 24px;
+    padding: 20px;
+    margin-bottom: 20px;
+    box-shadow: var(--shadow-soft);
+  }
+  .progress-info { display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 12px; }
+  .progress-track {
+    background: var(--bg-base);
+    height: 10px;
+    border-radius: 20px;
+    overflow: hidden;
+    border: 1px solid var(--border-card);
+  }
+  .progress-fill { background: var(--success); height: 100%; width: 0%; border-radius: 20px; transition: width 0.3s ease; }
+
+  .room-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+    gap: 12px;
+    margin-bottom: 24px;
+  }
+  .room-card {
+    background: var(--bg-card);
+    border: 1.5px solid var(--border-card);
+    border-radius: 22px;
+    padding: 18px 12px;
+    cursor: pointer;
+    text-align: center;
+    box-shadow: var(--shadow-soft);
+  }
+  .room-card .room-icon-box {
+    width: 52px;
+    height: 52px;
+    background: var(--bg-base);
+    border-radius: 16px;
+    display: grid;
+    place-items: center;
+    font-size: 26px;
+    margin: 0 auto 10px;
+  }
+  .room-card.checked { border-color: var(--success); background: var(--success-bg); }
+  .room-card.has-missing { border-color: var(--danger); background: var(--danger-bg); }
+
+  .status-tag {
+    font-size: 11px;
+    font-weight: 800;
+    padding: 3px 8px;
+    border-radius: 10px;
+    background: var(--bg-base);
+    color: var(--text-muted);
+    display: inline-block;
+    margin-top: 5px;
+  }
+  .room-card.checked .status-tag { background: #dcfce7; color: #166534; }
+  .room-card.has-missing .status-tag { background: #fee2e2; color: #991b1b; }
+
+  .card {
+    background: var(--bg-card);
+    border: 1px solid var(--border-card);
+    border-radius: 24px;
+    padding: 20px;
+    margin-bottom: 14px;
+    box-shadow: var(--shadow-soft);
+  }
+
+  button {
+    font-family: inherit;
+    font-size: 14px;
+    font-weight: 800;
+    border: none;
+    border-radius: 14px;
+    padding: 12px 18px;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+  }
+  button:active { transform: scale(0.96); }
+  .btn-primary { background: var(--primary-accent); color: #fff; box-shadow: 0 4px 14px rgba(37,99,235,0.3); }
+  .btn-success { background: var(--success); color: #fff; }
+  .btn-dark { background: #1e293b; color: #fff; }
+  .btn-light { background: rgba(37, 99, 235, 0.1); color: var(--primary-accent); }
+  .btn-danger { background: rgba(239, 68, 68, 0.1); color: var(--danger); }
+  .btn-full { width: 100%; }
+
+  input, select, textarea {
+    width: 100%;
+    padding: 13px 15px;
+    border-radius: 14px;
+    border: 1.5px solid var(--border-card);
+    font-family: inherit;
+    font-size: 14px;
+    outline: none;
+    background: var(--bg-base);
+    color: var(--text-main);
+  }
+  input:focus, select:focus, textarea:focus { border-color: var(--primary-accent); }
+  label { display: block; font-size: 13px; font-weight: 800; margin: 12px 0 6px; color: var(--text-muted); }
+
+  .filter-bar { display: flex; gap: 8px; overflow-x: auto; padding-bottom: 6px; margin-bottom: 12px; }
+  .filter-chip {
+    padding: 8px 16px;
+    border-radius: 20px;
+    background: var(--bg-card);
+    border: 1.5px solid var(--border-card);
+    color: var(--text-muted);
+    font-size: 12px;
+    font-weight: 800;
+    cursor: pointer;
+    white-space: nowrap;
+  }
+  .filter-chip.active { background: var(--primary-accent); color: #fff; border-color: var(--primary-accent); }
+
+  .serial-badge {
+    display: inline-flex;
+    align-items: center;
+    background: var(--bg-base);
+    border: 1px solid var(--border-card);
+    padding: 3px 8px;
+    border-radius: 8px;
+    font-size: 11px;
+    font-family: monospace;
+    font-weight: 800;
+    color: var(--primary-accent);
+    margin: 2px;
+  }
+  .sector-badge {
+    display: inline-block;
+    background: rgba(37, 99, 235, 0.1);
+    border: 1px solid rgba(37, 99, 235, 0.2);
+    color: var(--primary-accent);
+    padding: 2px 7px;
+    border-radius: 8px;
+    font-size: 11px;
+    font-weight: 800;
+  }
+  .surplus-tag {
+    display: inline-block;
+    background: rgba(37, 99, 235, 0.1);
+    color: var(--primary-accent);
+    border: 1px solid rgba(37, 99, 235, 0.2);
+    font-size: 11px;
+    font-weight: 800;
+    padding: 2px 7px;
+    border-radius: 8px;
+    margin-top: 4px;
+  }
+
+  .icon-picker-grid {
+    display: grid;
+    grid-template-columns: repeat(6, 1fr);
+    gap: 8px;
+    margin: 10px 0 16px;
+    background: var(--bg-base);
+    padding: 10px;
+    border-radius: 14px;
+    border: 1px solid var(--border-card);
+  }
+  .icon-opt {
+    width: 42px;
+    height: 42px;
+    border-radius: 12px;
+    background: var(--bg-card);
+    border: 1px solid var(--border-card);
+    display: grid;
+    place-items: center;
+    font-size: 20px;
+    cursor: pointer;
+  }
+  .icon-opt.selected { border-color: var(--primary-accent); background: rgba(37, 99, 235, 0.15); transform: scale(1.1); }
+
+  .modal-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(15, 23, 42, 0.6);
+    backdrop-filter: blur(8px);
+    display: flex;
+    align-items: flex-end;
+    justify-content: center;
+    z-index: 100;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.2s ease;
+  }
+  .modal-overlay.active { opacity: 1; pointer-events: auto; }
+  .modal-sheet {
+    background: var(--bg-card);
+    border: 1px solid var(--border-card);
+    width: 100%;
+    max-width: 620px;
+    border-radius: 30px 30px 0 0;
+    padding: 16px 22px 28px;
+    max-height: 86vh;
+    overflow-y: auto;
+    transform: translateY(100%);
+    transition: transform 0.28s var(--sheet-ease);
+    box-shadow: 0 -15px 40px rgba(0,0,0,0.2);
+  }
+  .modal-overlay.active .modal-sheet { transform: translateY(0); }
+  .sheet-handle { width: 42px; height: 5px; background: var(--border-card); border-radius: 10px; margin: 4px auto 14px; }
+  .modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px; }
+  .close-btn { background: var(--bg-base); color: var(--text-main); padding: 5px 12px; font-size: 15px; border-radius: 12px; font-weight: 800; }
+
+  .security-modal-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(15, 23, 42, 0.75);
+    backdrop-filter: blur(8px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 200;
+    padding: 16px;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.2s ease;
+  }
+  .security-modal-overlay.active { opacity: 1; pointer-events: auto; }
+  .security-modal-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border-card);
+    width: 100%;
+    max-width: 360px;
+    border-radius: 26px;
+    padding: 24px;
+    text-align: center;
+    box-shadow: 0 20px 40px rgba(0,0,0,0.2);
+  }
+
+  .stat-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin: 12px 0; }
+  .stat-card {
+    background: var(--bg-base);
+    border: 1px solid var(--border-card);
+    border-radius: 16px;
+    padding: 12px;
+    text-align: center;
+  }
+  .stat-val { font-size: 22px; font-weight: 900; color: var(--primary-accent); }
+  .stat-lbl { font-size: 11px; font-weight: 800; color: var(--text-muted); margin-top: 2px; }
+
+  @media (min-width: 768px) {
+    .modal-overlay { align-items: center; padding: 20px; }
+    .modal-sheet { border-radius: 26px; transform: translateY(20px) scale(0.95); }
+    .modal-overlay.active .modal-sheet { transform: translateY(0) scale(1); }
+    .sheet-handle { display: none; }
+  }
+</style>
+</head>
+<body>
+
+<div class="container">
+  <!-- شاشة الدخول -->
+  <div id="loginScreen" class="login-wrapper" style="display: none;">
+    <div class="login-card">
+      <div class="login-logo-box">🏢</div>
+      <h2 style="font-size: 21px; font-weight: 900; color: var(--text-main); margin-bottom: 2px;">نظام جرد المستودع</h2>
+      <p style="color: var(--text-muted); font-size: 13px;">أدخل رمز الدخول (PIN) لبدء العمل</p>
+      
+      <input type="password" id="userPinInput" class="pin-input-custom" placeholder="••••" inputmode="numeric" autocomplete="off">
+      <button class="btn-primary btn-full" onclick="loginWithPin()">دخول للنظام 🚀</button>
+    </div>
+  </div>
+
+  <!-- الواجهة الأساسية للنظام -->
+  <div id="mainApp" style="display: none;">
+    <header class="app-header">
+      <div class="header-content">
+        <div style="display: flex; align-items: center; gap: 8px;">
+          <button class="top-icon-btn" onclick="toggleDarkMode()" title="تغيير الثيم (ليلي/نهاري)">🌓</button>
+          <div class="header-title-box">
+            <small>نظام الرقابة وإدارة العهد</small>
+            <h1>جرد ومطابقة المستودع</h1>
+          </div>
+        </div>
+        <div class="header-actions">
+          <button class="logout-btn" onclick="logout()">خروج</button>
+          <div id="currentUserBadge" class="user-badge">المستخدم</div>
+        </div>
+      </div>
+      <div id="dailyDhikrBox" class="dhikr-banner">
+        <span>📿</span> <span id="dhikrText">سبحان الله وبحمده، سبحان الله العظيم</span>
+      </div>
+    </header>
+
+    <main class="content" id="appView"></main>
+
+    <!-- قائمة الكرات العائمة السريعة (FAB) -->
+    <div class="fab-container" id="fabContainer">
+      <div class="fab-menu" id="fabMenu">
+        <button class="fab-ball-item active" id="tabBtnTour" onclick="navigate('tour', this)"><span>📋</span> جولة الجرد</button>
+        <button class="fab-ball-item" id="tabBtnRooms" onclick="navigate('rooms', this)"><span>⚙️</span> لوحة الإدارة</button>
+        <button class="fab-ball-item" id="tabBtnLogs" onclick="navigate('logs', this)"><span>📑</span> السجلات</button>
+      </div>
+      <div class="fab-main-ball" onclick="toggleFabMenu()" title="القائمة السريعة">
+        ⚡
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- المودال الرئيسي -->
+<div class="modal-overlay" id="modalOverlay" onclick="handleOverlayClick(event)">
+  <div class="modal-sheet">
+    <div class="sheet-handle"></div>
+    <div class="modal-header">
+      <h2 id="modalTitle" style="font-weight: 900; font-size: 18px;">تفاصيل</h2>
+      <button class="close-btn" onclick="closeModal()">✕</button>
+    </div>
+    <div id="modalContent"></div>
+  </div>
+</div>
+
+<!-- نافذة تأكيد رمز المدير -->
+<div class="security-modal-overlay" id="secModalOverlay">
+  <div class="security-modal-card">
+    <div style="font-size: 36px; margin-bottom: 6px;">🔒</div>
+    <h3 style="font-size: 18px; font-weight: 900;">تأكيد رمز المدير</h3>
+    <p style="color: var(--text-muted); font-size: 13px; margin: 4px 0 16px;">أدخل رمز الـ PIN الخاص بك كمدير لإتمام الإجراء</p>
+    
+    <input type="password" id="secPinInput" class="pin-input-custom" style="font-size:22px; margin:10px 0 16px;" placeholder="••••" inputmode="numeric">
+    
+    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
+      <button class="btn-dark" onclick="cancelSecAction()">إلغاء</button>
+      <button class="btn-primary" onclick="verifySecAction()">تأكيد 🔑</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const dhikrList = [
+  "سُبْحَانَ اللَّهِ وَبِحَمْدِهِ، سُبْحَانَ اللَّهِ العَظِيمِ",
+  "لَا حَوْلَ وَلَا قُوَّةَ إِلَّا بِاللَّهِ العَلِيِّ العَظِيمِ",
+  "اللهم صل وسلم على نبينا محمد وعلى آله وصحبه أجمعين",
+  "أستغفر الله العظيم الذي لا إله إلا هو الحي القيوم وأتوب إليه",
+  "سُبْحَانَ اللَّهِ، وَالْحَمْدُ لِلَّهِ، وَلَا إِلَهَ إِلَّا اللَّهُ، وَاللَّهُ أَكْبَرُ",
+  "لَا إِلَهَ إِلَّا أَنْتَ سُبْحَانَكَ إِنِّي كُنْتُ مِنَ الظَّالِمِينَ",
+  "اللهم إني أسألك علماً نافعاً ورزقاً طيباً وعملاً متقبلاً",
+  "حَسْبِيَ اللَّهُ لَا إِلَهَ إِلَّا هُوَ عَلَيْهِ تَوَكَّلْتُ وَهُوَ رَبُّ الْعَرْشِ الْعَظِيمِ",
+  "يَا حَيُّ يَا قَيُّومُ بِرَحْمَتِكَ أَسْتَغِيثُ أَصْلِحْ لِي شَأْني كُلَّهُ",
+  "رَبِّ اغْفِرْ لِي وَتُبْ عَلَيَّ إِنَّكَ أَنْتَ التَّوَّابُ الرَّحِيمُ",
+  "اللهم إني أعوذ بك من الهم والحزن، والعجز والكسل",
+  "اللهم عافني في بدني، اللهم عافني في سمعي، اللهم عافني في بصري",
+  "لا إله إلا الله وحده لا شريك له، له الملك وله الحمد وهو على كل شيء قدير",
+  "سبحان الله وبحمده عدد خلقه، ورضا نفسه، وزنة عرشه، ومداد كلماته"
+];
+
+function initRandomDhikr() {
+  const randomIndex = Math.floor(Math.random() * dhikrList.length);
+  const el = document.getElementById('dhikrText');
+  if (el) el.textContent = dhikrList[randomIndex];
+}
+
+function toggleDarkMode() {
+  document.body.classList.toggle('dark-mode');
+  const isDark = document.body.classList.contains('dark-mode');
+  try {
+    localStorage.setItem('wh_dark_mode', isDark ? 'true' : 'false');
+  } catch (error) {
+    console.warn('Could not save theme preference:', error);
+  }
+}
+
+function checkDarkModePreference() {
+  try {
+    if (localStorage.getItem('wh_dark_mode') === 'true') {
+      document.body.classList.add('dark-mode');
+    }
+  } catch (error) {
+    console.warn('Could not read theme preference:', error);
+  }
+}
+
+function toggleFabMenu() {
+  document.getElementById('fabContainer').classList.toggle('open');
+}
+
+// إعدادات Firebase
+const firebaseConfig = {
+  apiKey: "AIzaSyBD3Rd8dOxzywm8eQioVGUltNS2DqXfqbs",
+  authDomain: "barren-4903a.firebaseapp.com",
+  projectId: "barren-4903a",
+  storageBucket: "barren-4903a.firebasestorage.app",
+  messagingSenderId: "609843831407",
+  appId: "1:609843831407:web:a10a2e51ea089eef6a239a",
+  measurementId: "G-LZM4PRCS5X"
+};
+
+if (!firebase.apps.length) {
+  firebase.initializeApp(firebaseConfig);
+}
+const dbFirestore = firebase.firestore();
+
+let currentUser = null;
+let roomsData = [];
+let logsData = [];
+let usersData = [];
+let surplusData = [];
+let activeTab = 'tour';
+let submittingAudit = false;
+
+let logFilterType = 'all';
+let logFilterStaff = 'all';
+let adminSelectedSector = 'all';
+let adminSubTab = 'rooms'; // 'rooms' or 'staff'
+
+let currentTour = {
+  startTime: null,
+  checkedRooms: {}
+};
+
+let pendingSecCallback = null;
+let databaseReady = false;
+
+function showDatabaseError(error) {
+  console.error('Warehouse database operation failed:', error);
+  const code = error && error.code ? `\nرمز الخطأ: ${error.code}` : '';
+  const message = error && error.code === 'permission-denied'
+    ? 'رفضت قواعد أمان Firebase تعديل البيانات. يجب السماح للمدير الموثق بتعديل وحذف مستندات warehouse_users.'
+    : 'تعذر تنفيذ العملية. تحقق من الاتصال وقواعد صلاحيات Firebase ثم حاول مرة أخرى.';
+  alert(`${message}${code}`);
+}
+
+function persistRoomItems(room, items) {
+  return dbFirestore.collection('warehouse_rooms').doc(room.id).update({ items })
+    .then(() => {
+      room.items = items;
+      if (activeTab === 'rooms') renderRoomsReference();
+      else if (activeTab === 'tour') renderTour();
+    })
+    .catch(showDatabaseError);
+}
+
+function initDatabase() {
+  checkDarkModePreference();
+  initRandomDhikr();
+  updateNetworkUI();
+  document.getElementById('loginScreen').style.display = 'flex';
+
+  dbFirestore.enablePersistence({ synchronizeTabs: true }).catch(error => {
+    if (error.code !== 'failed-precondition' && error.code !== 'unimplemented') {
+      console.warn('Firestore offline persistence could not be enabled:', error);
+    }
+  });
+
+  const collections = [
+    ['warehouse_users', data => { usersData = data; databaseReady = true; }],
+    ['warehouse_rooms', data => { roomsData = data; }],
+    ['warehouse_audits', data => { logsData = data; }],
+    ['warehouse_surplus', data => { surplusData = data; }]
+  ];
+
+  collections.forEach(([name, applyData]) => {
+    dbFirestore.collection(name).onSnapshot(snapshot => {
+      const data = snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id }));
+      applyData(data);
+      if (currentUser) {
+        if (activeTab === 'tour') renderTour();
+        if (activeTab === 'rooms') renderRoomsReference();
+        if (activeTab === 'logs') renderLogs();
+      }
+    }, showDatabaseError);
+  });
+}
+
+function openAddRoomModal() {
+  openModal('إضافة غرفة جديدة', `
+    <label>اسم الغرفة</label>
+    <input type="text" id="newRoomName" maxlength="80" placeholder="مثلاً: غرفة التخزين الرئيسية">
+    <label>الأيقونة</label>
+    <input type="text" id="newRoomIcon" maxlength="8" value="🚪">
+    <div style="margin-top:20px;">
+      <button class="btn-primary btn-full" onclick="saveNewRoom()">إضافة الغرفة ✓</button>
+    </div>
+  `);
+}
+
+function saveNewRoom() {
+  if (!currentUser || currentUser.role !== 'admin') return;
+  const name = document.getElementById('newRoomName').value.trim();
+  const icon = document.getElementById('newRoomIcon').value.trim() || '🚪';
+  if (!name) {
+    alert('يرجى إدخال اسم الغرفة.');
+    return;
+  }
+  dbFirestore.collection('warehouse_rooms').add({ name, icon, items: [] })
+    .then(() => closeModal())
+    .catch(showDatabaseError);
+}
+
+function saveItemToRoom(roomId) {
+  const room = roomsData.find(entry => entry.id === roomId);
+  if (!room) return;
+
+  const name = document.getElementById('newItemName').value.trim();
+  const sector = document.getElementById('newItemSector').value;
+  const isSerialized = document.getElementById('newItemIsSerialized').checked;
+  const icon = document.getElementById('newItemIcon').value.trim() || '📦';
+  const serials = isSerialized
+    ? document.getElementById('newItemSerials').value.split(',').map(value => value.trim()).filter(Boolean)
+    : [];
+  const qty = isSerialized ? serials.length : Number.parseInt(document.getElementById('newItemQty').value, 10);
+
+  if (!name || !Number.isInteger(qty) || qty < 1 || (isSerialized && new Set(serials).size !== serials.length)) {
+    alert('تحقق من اسم الصنف والكمية، وتأكد من عدم تكرار الأرقام التسلسلية.');
+    return;
+  }
+
+  const items = [...(room.items || []), {
+    id: Date.now(),
+    name,
+    qty,
+    icon,
+    sector,
+    isSerialized,
+    ...(isSerialized ? { serials } : {})
+  }];
+  persistRoomItems(room, items).then(() => closeModal());
+}
+
+function updateItemInRoom(roomId, itemId) {
+  const room = roomsData.find(entry => entry.id === roomId);
+  if (!room) return;
+
+  const name = document.getElementById('editItemName').value.trim();
+  const sector = document.getElementById('editItemSector').value;
+  const icon = document.getElementById('editItemIcon').value.trim() || '📦';
+  const isSerialized = document.getElementById('editItemIsSerialized').checked;
+  const serials = isSerialized
+    ? document.getElementById('editItemSerials').value.split(',').map(value => value.trim()).filter(Boolean)
+    : [];
+  const qty = isSerialized ? serials.length : Number.parseInt(document.getElementById('editItemQty').value, 10);
+
+  if (!name || !Number.isInteger(qty) || qty < 1 || (isSerialized && new Set(serials).size !== serials.length)) {
+    alert('تحقق من اسم الصنف والكمية، وتأكد من عدم تكرار الأرقام التسلسلية.');
+    return;
+  }
+
+  const items = (room.items || []).map(item => item.id === itemId
+    ? { ...item, name, sector, icon, qty, isSerialized, ...(isSerialized ? { serials } : { serials: [] }) }
+    : item);
+  persistRoomItems(room, items).then(() => closeModal());
+}
+
+function deleteItemFromRoom(roomId, itemId) {
+  const room = roomsData.find(entry => entry.id === roomId);
+  if (!room || !confirm('هل أنت متأكد من حذف هذا الصنف؟')) return;
+  const items = (room.items || []).filter(item => item.id !== itemId);
+  persistRoomItems(room, items).then(() => openEditRoomItemsModal(roomId));
+}
+
+function openChangeMyPinModal() {
+  openModal('تغيير رمز الدخول', `
+    <label>رمز PIN جديد (4 أرقام على الأقل)</label>
+    <input type="password" id="newMyPin" inputmode="numeric" autocomplete="new-password">
+    <div style="margin-top:20px;">
+      <button class="btn-primary btn-full" onclick="saveMyPin()">حفظ الرمز الجديد 🔑</button>
+    </div>
+  `);
+}
+
+function saveMyPin() {
+  const pin = document.getElementById('newMyPin').value.trim();
+  if (!currentUser || !/^\d{4,}$/.test(pin)) {
+    alert('يجب أن يتكون الرمز من أربعة أرقام على الأقل.');
+    return;
+  }
+  dbFirestore.collection('warehouse_users').doc(currentUser.id).update({ pin })
+    .then(() => {
+      currentUser.pin = pin;
+      closeModal();
+      alert('تم تغيير رمز الدخول.');
+    })
+    .catch(showDatabaseError);
+}
+
+function openTransferModal() {
+  if (!currentUser || currentUser.role !== 'admin') return;
+  const availableRooms = roomsData.filter(room => (room.items || []).length > 0);
+  if (availableRooms.length < 1 || roomsData.length < 2) {
+    alert('يلزم وجود غرفتين على الأقل وصنف واحد قابل للمناقلة.');
+    return;
+  }
+  openModal('مناقلة عهدة بين الغرف', `
+    <label>من الغرفة</label>
+    <select id="transferSource" onchange="updateTransferItems()">
+      ${availableRooms.map(room => `<option value="${room.id}">${room.name}</option>`).join('')}
+    </select>
+    <label>إلى الغرفة</label>
+    <select id="transferDestination">
+      ${roomsData.map(room => `<option value="${room.id}">${room.name}</option>`).join('')}
+    </select>
+    <label>الصنف</label>
+    <select id="transferItem">
+      ${(availableRooms[0].items || []).map(item => `<option value="${item.id}">${item.name} (${item.qty})</option>`).join('')}
+    </select>
+    <div style="margin-top:20px;">
+      <button class="btn-primary btn-full" onclick="transferItem()">نقل الصنف كاملاً 🔄</button>
+    </div>
+  `);
+}
+
+function updateTransferItems() {
+  const source = roomsData.find(room => room.id === document.getElementById('transferSource').value);
+  const select = document.getElementById('transferItem');
+  if (!source || !select) return;
+  select.innerHTML = (source.items || []).map(item => `<option value="${item.id}">${item.name} (${item.qty})</option>`).join('');
+}
+
+function transferItem() {
+  const source = roomsData.find(room => room.id === document.getElementById('transferSource').value);
+  const destination = roomsData.find(room => room.id === document.getElementById('transferDestination').value);
+  const itemId = Number(document.getElementById('transferItem').value);
+  if (!source || !destination || source.id === destination.id) {
+    alert('اختر غرفتين مختلفتين.');
+    return;
+  }
+  const item = (source.items || []).find(entry => entry.id === itemId);
+  if (!item) return;
+  const sourceItems = source.items.filter(entry => entry.id !== itemId);
+  const destinationItems = [...(destination.items || []), item];
+  const batch = dbFirestore.batch();
+  batch.update(dbFirestore.collection('warehouse_rooms').doc(source.id), { items: sourceItems });
+  batch.update(dbFirestore.collection('warehouse_rooms').doc(destination.id), { items: destinationItems });
+  batch.commit().then(() => closeModal()).catch(showDatabaseError);
+}
+
+function requireAdminVerification(callback) {
+  if (!currentUser || currentUser.role !== 'admin') {
+    alert('هذا الإجراء مخصص للمدير فقط!');
+    return;
+  }
+  pendingSecCallback = callback;
+  document.getElementById('secPinInput').value = '';
+  document.getElementById('secModalOverlay').classList.add('active');
+  setTimeout(() => document.getElementById('secPinInput').focus(), 100);
+}
+
+function verifySecAction() {
+  const entered = document.getElementById('secPinInput').value.trim();
+  if (currentUser && String(currentUser.pin).trim() === entered) {
+    const callback = pendingSecCallback;
+    cancelSecAction();
+    if (typeof callback === 'function') callback();
+  } else {
+    alert('رمز المدير غير صحيح! تم رفض الإجراء.');
+    document.getElementById('secPinInput').value = '';
+  }
+}
+
+function cancelSecAction() {
+  document.getElementById('secModalOverlay').classList.remove('active');
+  pendingSecCallback = null;
+}
+
+function saveTourDraft() {
+  if (!currentUser) return;
+  try {
+    localStorage.setItem(`wh_tour_draft_${currentUser.id}`, JSON.stringify(currentTour));
+  } catch (error) {
+    console.warn('Could not save the local tour draft:', error);
+  }
+}
+
+function loadUserTourDraft() {
+  if (!currentUser) {
+    currentTour = { startTime: null, checkedRooms: {} };
+    return;
+  }
+  try {
+    const saved = JSON.parse(localStorage.getItem(`wh_tour_draft_${currentUser.id}`));
+    if (saved && saved.checkedRooms) {
+      const sectorPrefix = `${encodeURIComponent(getActiveSector())}::`;
+      const checkedRooms = {};
+      Object.entries(saved.checkedRooms).forEach(([key, room]) => {
+        if (key.includes('::')) {
+          checkedRooms[key] = room;
+        } else {
+          checkedRooms[`${sectorPrefix}${key}`] = room;
+        }
+      });
+      currentTour = { ...saved, checkedRooms };
+    } else {
+      currentTour = { startTime: null, checkedRooms: {} };
+    }
+  } catch(e) {
+    currentTour = { startTime: null, checkedRooms: {} };
+  }
+}
+
+window.addEventListener('online', updateNetworkUI);
+window.addEventListener('offline', updateNetworkUI);
+
+function updateNetworkUI() {
+  const text = document.getElementById('networkStatusText');
+  if (!text) return;
+  if (navigator.onLine) {
+    text.textContent = 'متصل بالسحاب 🟢';
+  } else {
+    text.textContent = 'أوفلاين 📡';
+  }
+}
+
+function loginWithPin() {
+  if (!databaseReady) {
+    alert('جارٍ تحميل المستخدمين من قاعدة البيانات. انتظر لحظة ثم أعد المحاولة.');
+    return;
+  }
+  const pin = document.getElementById('userPinInput').value.trim();
+  if (!pin) return;
+
+  const user = usersData.find(u => String(u.pin).trim() === pin);
+
+  if (user) {
+    currentUser = user;
+    document.getElementById('userPinInput').value = '';
+    showAppScreen();
+  } else {
+    alert('رمز الـ PIN غير صحيح! تأكد من الرمز وحاول ثانية.');
+    document.getElementById('userPinInput').value = '';
+  }
+}
+
+function showLoginScreen() {
+  document.getElementById('userPinInput').value = '';
+  document.getElementById('loginScreen').style.display = 'flex';
+  document.getElementById('mainApp').style.display = 'none';
+
+  document.querySelectorAll('.fab-ball-item').forEach(b => b.classList.remove('active'));
+  const defaultTabBtn = document.getElementById('tabBtnTour');
+  if (defaultTabBtn) defaultTabBtn.classList.add('active');
+}
+
+function showAppScreen() {
+  document.getElementById('loginScreen').style.display = 'none';
+  document.getElementById('mainApp').style.display = 'block';
+
+  adminSelectedSector = 'all';
+  loadUserTourDraft();
+
+  let roleLabel = currentUser.sector && currentUser.sector !== 'all' ? `جرد: ${currentUser.sector}` : (currentUser.role === 'admin' ? 'المدير' : 'مشرف عام');
+  document.getElementById('currentUserBadge').textContent = `${currentUser.name} (${roleLabel})`;
+
+  const tabTour = document.getElementById('tabBtnTour');
+  const tabRooms = document.getElementById('tabBtnRooms');
+  const tabLogs = document.getElementById('tabBtnLogs');
+
+  logFilterType = 'all';
+  logFilterStaff = 'all';
+
+  if (currentUser.role === 'supervisor') {
+    tabTour.style.display = 'none';
+    tabRooms.style.display = 'none';
+    tabLogs.style.display = 'flex';
+    navigate('logs', tabLogs);
+  } else {
+    tabTour.style.display = 'flex';
+    tabRooms.style.display = currentUser.role === 'admin' ? 'flex' : 'none';
+    tabLogs.style.display = 'flex';
+    navigate('tour', tabTour);
+  }
+}
+
+function logout() {
+  currentUser = null;
+  currentTour = { startTime: null, checkedRooms: {} };
+  activeTab = 'tour';
+  logFilterType = 'all';
+  logFilterStaff = 'all';
+  closeModal();
+  cancelSecAction();
+  showLoginScreen();
+}
+
+function navigate(tab, btn) {
+  activeTab = tab;
+  document.querySelectorAll('.fab-ball-item').forEach(b => b.classList.remove('active'));
+  if (btn) btn.classList.add('active');
+
+  document.getElementById('fabContainer').classList.remove('open');
+
+  const appView = document.getElementById('appView');
+  appView.classList.remove('view-transition');
+  void appView.offsetWidth;
+  appView.classList.add('view-transition');
+
+  renderActiveTab();
+}
+
+function renderActiveTab() {
+  if (!currentUser) return;
+  if (activeTab === 'tour') renderTour();
+  if (activeTab === 'rooms') renderRoomsReference();
+  if (activeTab === 'logs') renderLogs();
+}
+
+function getActiveSector() {
+  if (currentUser.role === 'staff' && currentUser.sector && currentUser.sector !== 'all') {
+    return currentUser.sector;
+  }
+  return adminSelectedSector;
+}
+
+function getRoomAuditKey(roomId, sector = getActiveSector()) {
+  return `${encodeURIComponent(sector)}::${roomId}`;
+}
+
+function getActiveTourRoomAudits() {
+  const prefix = `${encodeURIComponent(getActiveSector())}::`;
+  const activeRoomKeys = new Set(roomsData.map(room => getRoomAuditKey(room.id)));
+  return Object.entries(currentTour.checkedRooms)
+    .filter(([key]) => key.startsWith(prefix) && activeRoomKeys.has(key))
+    .map(([, audit]) => audit);
+}
+
+// 1. جولة الجرد
+function renderTour() {
+  const total = roomsData.length;
+  const checkedCount = getActiveTourRoomAudits().length;
+  const percent = total > 0 ? Math.round((checkedCount / total) * 100) : 0;
+  const currentSector = getActiveSector();
+
+  let html = `
+    <div class="progress-hero">
+      <div class="progress-info">
+        <div>
+          <div style="font-size:12px; color:var(--primary-accent); font-weight:800;">جولة تفتيش المستودع الدورية</div>
+          <div style="font-size:22px; font-weight:900; margin-top:2px;">المفتش: ${currentUser.name}</div>
+          <div style="font-size:12px; background:rgba(37,99,235,0.1); color:var(--primary-accent); padding:3px 10px; border-radius:20px; display:inline-block; margin-top:6px; font-weight:800;">
+            القطاع: ${currentSector === 'all' ? 'كافة القطاعات' : currentSector}
+          </div>
+        </div>
+        <div style="text-align:left;">
+          <div style="font-size:26px; font-weight:900; font-family:monospace;">${checkedCount} / ${total}</div>
+          <div style="font-size:11px; color:var(--text-muted); font-weight:700;">الإنجاز: ${percent}%</div>
+        </div>
+      </div>
+      <div class="progress-track">
+        <div class="progress-fill" style="width: ${percent}%;"></div>
+      </div>
+    </div>`;
+
+  if (currentUser.role === 'admin') {
+    html += `
+      <div style="margin-bottom:14px; background:var(--bg-card); padding:12px 16px; border-radius:18px; border:1px solid var(--border-card); display:flex; align-items:center; justify-content:space-between; box-shadow:var(--shadow-soft);">
+        <span style="font-weight:800; font-size:13px; color:var(--text-muted);">قطاع الجرد الحالي:</span>
+        <select onchange="adminSelectedSector=this.value; renderTour();" style="width:160px; padding:7px; font-size:12px; border-radius:12px;">
+          <option value="all" ${adminSelectedSector==='all'?'selected':''}>جميع الأقسام معاً</option>
+          <option value="أثاث ومفروشات" ${adminSelectedSector==='أثاث ومفروشات'?'selected':''}>أثاث ومفروشات 🛏️</option>
+          <option value="أجهزة وتقنية" ${adminSelectedSector==='أجهزة وتقنية'?'selected':''}>أجهزة وتقنية 💻</option>
+          <option value="تجهيزات عامة" ${adminSelectedSector==='تجهيزات عامة'?'selected':''}>تجهيزات عامة 📦</option>
+        </select>
+      </div>`;
+  }
+
+  html += `
+    <div style="font-weight:900; font-size:16px; margin-bottom:12px; color:var(--text-muted);">وحدات المستودع التفاعلية:</div>
+    <div class="room-grid">`;
+
+  roomsData.forEach(room => {
+    const roomAuditKey = getRoomAuditKey(room.id);
+    const isChecked = !!currentTour.checkedRooms[roomAuditKey];
+    const roomAudit = currentTour.checkedRooms[roomAuditKey];
+    const hasIssues = roomAudit && (roomAudit.missingCount > 0 || (roomAudit.details && roomAudit.details.length > 0) || (roomAudit.surplus && roomAudit.surplus.trim() !== ''));
+
+    let statusText = 'بانتظار الفحص';
+    let cardClass = 'room-card';
+
+    if (isChecked) {
+      if (hasIssues) {
+        cardClass += ' has-missing';
+        statusText = (roomAudit.surplus && roomAudit.surplus.trim() !== '') ? `ملاحظات / زائد ⚠️` : `مشاكل أو نواقص ⚠️`;
+      } else {
+        cardClass += ' checked';
+        statusText = 'سليمة ومطابقة ✅';
+      }
+    }
+
+    const roomIcon = room.icon || '🚪';
+
+    html += `
+      <div class="${cardClass}" onclick="openRoomAuditModal('${room.id}')">
+        <div class="room-icon-box">${roomIcon}</div>
+        <div style="font-weight:900; font-size:16px;">${room.name}</div>
+        <span class="status-tag">${statusText}</span>
+      </div>`;
+  });
+
+  html += `</div>`;
+
+  if (checkedCount === total && total > 0) {
+    html += `
+      <div class="card" style="border-color:rgba(16, 185, 129, 0.4); background:var(--success-bg); text-align:center; padding:24px;">
+        <div style="font-size:32px; margin-bottom:6px;">🎉</div>
+        <div style="font-weight:900; color:#166534; font-size:18px;">اكتملت الجولة لجميع الغرف بنجاح!</div>
+        <p style="font-size:13px; color:#166534; margin:6px 0 16px;">يمكنك الآن اعتماد وحفظ التقرير الشامل لهذا القطاع في السحاب.</p>
+        <button class="btn-success btn-full" onclick="submitFullWarehouseAudit()">اعتماد التقرير الشامل وإرساله 🚀</button>
+      </div>`;
+  }
+
+  document.getElementById('appView').innerHTML = html;
+}
+
+function openRoomAuditModal(roomId) {
+  if (!currentTour.startTime) {
+    currentTour.startTime = Date.now();
+    saveTourDraft();
+  }
+
+  const room = roomsData.find(r => r.id === roomId);
+  if (!room) return;
+
+  const currentSector = getActiveSector();
+  let items = room.items || [];
+  if (currentSector !== 'all') {
+    items = items.filter(itm => (itm.sector || 'أثاث ومفروشات') === currentSector);
+  }
+
+  let html = `
+    <div style="background:var(--bg-base); border:1px solid var(--border-card); padding:14px; border-radius:18px; margin-bottom:16px; font-size:13px;">
+      <div style="display:flex; justify-content:space-between; align-items:center;">
+        <div><b>الغرفة:</b> ${room.name}</div>
+        <div><b>المفتش:</b> ${currentUser.name}</div>
+      </div>
+      <div style="margin-top:6px;"><b>القطاع:</b> <span class="sector-badge">${currentSector === 'all' ? 'جميع الأقسام' : currentSector}</span></div>
+    </div>
+    <div style="font-weight:900; font-size:15px; margin-bottom:12px; color:var(--text-muted);">مطابقة العهدة (${items.length} أصناف):</div>`;
+
+  if (items.length === 0) {
+    html += `<div style="text-align:center; color:var(--text-muted); padding:20px;">لا توجد أصناف تتبع لقطاع (${currentSector}) في هذه الغرفة.</div>`;
+  } else {
+    items.forEach(itm => {
+      if (itm.isSerialized && itm.serials && itm.serials.length > 0) {
+        html += `
+          <div style="border-bottom:1px solid var(--border-card); padding:14px 0;">
+            <div style="display:flex; align-items:center; gap:8px; margin-bottom:8px;">
+              <span style="font-size:24px;">${itm.icon || '📦'}</span>
+              <div>
+                <div style="font-weight:900; font-size:14px;">${itm.name} <small style="color:var(--primary-accent);">(مرقّم تسلسلياً)</small></div>
+                <div style="font-size:11px; color:var(--text-muted);">افحص كل رقم تسلسلي على حدة:</div>
+              </div>
+            </div>
+            <div style="display:flex; flex-direction:column; gap:8px; padding-right:12px;">`;
+
+        itm.serials.forEach(sn => {
+          html += `
+            <div style="background:var(--bg-base); border:1px solid var(--border-card); border-radius:14px; padding:10px 12px;">
+              <div style="display:flex; align-items:center; justify-content:space-between; gap:8px;">
+                <span class="serial-badge"># ${sn}</span>
+                <select id="serial_state_${itm.id}_${sn}" onchange="document.getElementById('serial_note_box_${itm.id}_${sn}').style.display = this.value==='ok'?'none':'block'" style="width:130px; font-size:12px; padding:6px; border-radius:10px;">
+                  <option value="ok">سليم ✅</option>
+                  <option value="damaged">تالف / كسر 🛠️</option>
+                  <option value="maintenance">قيد الصيانة 🔄</option>
+                  <option value="missing">مفقود / غير موجود ❌</option>
+                </select>
+              </div>
+              <div id="serial_note_box_${itm.id}_${sn}" style="display:none; margin-top:8px;">
+                <input type="text" id="serial_note_${itm.id}_${sn}" placeholder="ملاحظة حول القطعة #${sn}..." style="font-size:12px; padding:8px; border-radius:10px;">
+              </div>
+            </div>`;
+        });
+
+        html += `</div></div>`;
+      } else {
+        html += `
+          <div style="border-bottom:1px solid var(--border-card); padding:14px 0;">
+            <div style="display:flex; align-items:center; justify-content:space-between; gap:10px;">
+              <div style="display:flex; align-items:center; gap:10px; flex:1;">
+                <span style="font-size:24px;">${itm.icon || '📦'}</span>
+                <div>
+                  <div style="font-weight:900; font-size:14px;">${itm.name}</div>
+                  <div style="font-size:12px; color:var(--text-muted);">المرجع: ${itm.qty} قطع</div>
+                </div>
+              </div>
+              <select id="state_${itm.id}" onchange="toggleItemExtraFields(${itm.id})" style="width:130px; font-size:12px; padding:8px; border-radius:10px;">
+                <option value="ok">مطابق ✅</option>
+                <option value="missing">نقص بالكمية ⚠️</option>
+                <option value="empty">مفقود بالكامل ❌</option>
+                <option value="damaged">تالف / كسر 🛠️</option>
+                <option value="maintenance">قيد الصيانة 🔄</option>
+              </select>
+            </div>
+            <div id="extra_box_${itm.id}" style="display:none; background:var(--bg-base); padding:10px 12px; border-radius:14px; margin-top:8px; border:1px solid var(--border-card);">
+              <div style="display:flex; gap:8px; align-items:center;">
+                <span style="font-size:12px; font-weight:800; white-space:nowrap; color:var(--text-muted);">العدد:</span>
+                <input type="number" id="missing_${itm.id}" value="1" min="1" max="${itm.qty}" style="width:65px; font-size:12px; padding:6px; border-radius:8px;">
+                <input type="text" id="note_${itm.id}" placeholder="ملاحظة سريعة..." style="font-size:12px; padding:6px; border-radius:8px;">
+              </div>
+            </div>
+          </div>`;
+      }
+    });
+  }
+
+  const roomAuditKey = getRoomAuditKey(roomId);
+  const existingSurplus = (currentTour.checkedRooms[roomAuditKey] && currentTour.checkedRooms[roomAuditKey].surplus) ? currentTour.checkedRooms[roomAuditKey].surplus : '';
+
+  html += `
+    <div style="margin-top:16px; background:rgba(37,99,235,0.08); border:1.5px dashed rgba(37,99,235,0.35); padding:14px; border-radius:18px;">
+      <div style="font-weight:900; font-size:13px; color:var(--primary-accent); margin-bottom:4px;">➕ هل توجد مواد زائدة تتبع لقطاعك؟</div>
+      <div style="font-size:11px; color:var(--text-muted); margin-bottom:8px;">سجل أي مادة إضافية وُجدت بالغرفة</div>
+      <input type="text" id="surplusItemsInput" value="${existingSurplus}" placeholder="مثلاً: لابتوب إضافي، إسفنجة زيادة..." style="font-size:13px; padding:10px; border-radius:12px;">
+    </div>`;
+
+  html += `
+    <div style="margin-top:20px;">
+      <button class="btn-primary btn-full" onclick="saveRoomAudit('${room.id}')">تأكيد جرد ${room.name} ✓</button>
+    </div>`;
+
+  openModal(`جرد ${room.name}`, html);
+}
+
+function toggleItemExtraFields(itemId) {
+  const state = document.getElementById(`state_${itemId}`).value;
+  const box = document.getElementById(`extra_box_${itemId}`);
+  if (state === 'ok') {
+    box.style.display = 'none';
+  } else {
+    box.style.display = 'block';
+  }
+}
+
+async function saveRoomAudit(roomId) {
+  const room = roomsData.find(r => r.id === roomId);
+  if (!room) return;
+
+  const currentSector = getActiveSector();
+  let items = room.items || [];
+  if (currentSector !== 'all') {
+    items = items.filter(itm => (itm.sector || 'أثاث ومفروشات') === currentSector);
+  }
+
+  let missingCount = 0;
+  let details = [];
+  let invalidQuantity = false;
+
+  items.forEach(itm => {
+    if (itm.isSerialized && itm.serials && itm.serials.length > 0) {
+      itm.serials.forEach(sn => {
+        const sState = document.getElementById(`serial_state_${itm.id}_${sn}`).value;
+        if (sState !== 'ok') {
+          missingCount += 1;
+          const sNote = document.getElementById(`serial_note_${itm.id}_${sn}`) ? document.getElementById(`serial_note_${itm.id}_${sn}`).value.trim() : '';
+          
+          let sLabel = 'مفقود';
+          if (sState === 'damaged') sLabel = 'تالف';
+          if (sState === 'maintenance') sLabel = 'صيانة';
+
+          details.push({
+            name: `${itm.name} [رقم: ${sn}]`,
+            count: 1,
+            status: sLabel,
+            note: sNote
+          });
+        }
+      });
+    } else {
+      const state = document.getElementById(`state_${itm.id}`).value;
+      if (state !== 'ok') {
+        let count = itm.qty;
+        if (state !== 'empty') {
+          count = Number.parseInt(document.getElementById(`missing_${itm.id}`).value, 10);
+          if (!Number.isInteger(count) || count < 1 || count > itm.qty) {
+            alert(`العدد المدخل للصنف "${itm.name}" يجب أن يكون بين 1 و${itm.qty}.`);
+            invalidQuantity = true;
+            return;
+          }
+        }
+        missingCount += count;
+        const note = document.getElementById(`note_${itm.id}`) ? document.getElementById(`note_${itm.id}`).value.trim() : '';
+
+        let statusLabel = 'نقص';
+        if (state === 'empty') statusLabel = 'مفقود بالكامل';
+        if (state === 'damaged') statusLabel = 'تالف';
+        if (state === 'maintenance') statusLabel = 'صيانة';
+
+        details.push({
+          name: itm.name,
+          count: count,
+          status: statusLabel,
+          note: note
+        });
+      }
+    }
+  });
+  if (invalidQuantity) return;
+
+  const surplus = document.getElementById('surplusItemsInput') ? document.getElementById('surplusItemsInput').value.trim() : '';
+
+  try {
+    const tourId = `${currentTour.startTime || Date.now()}_${encodeURIComponent(currentSector)}_${room.id}`;
+    const existingSurplus = surplusData.find(item => item.tourId === tourId);
+    if (surplus) {
+      if (!existingSurplus) {
+        await dbFirestore.collection('warehouse_surplus').doc(tourId).set({
+          tourId,
+          roomId: room.id,
+          roomName: room.name,
+          itemName: surplus,
+          sector: currentSector === 'all' ? 'عام' : currentSector,
+          inspectorName: currentUser.name,
+          inspectorId: currentUser.id,
+          timestamp: Date.now(),
+          date: new Date().toLocaleDateString('ar-EG') + ' ' + new Date().toLocaleTimeString('ar-EG', {hour:'2-digit', minute:'2-digit'}),
+          status: 'pending'
+        });
+      } else if (existingSurplus.status === 'pending') {
+        await dbFirestore.collection('warehouse_surplus').doc(existingSurplus.id).update({
+          itemName: surplus,
+          timestamp: Date.now(),
+          date: new Date().toLocaleDateString('ar-EG') + ' ' + new Date().toLocaleTimeString('ar-EG', {hour:'2-digit', minute:'2-digit'})
+        });
+      }
+    } else if (existingSurplus && existingSurplus.status === 'pending') {
+      await dbFirestore.collection('warehouse_surplus').doc(existingSurplus.id).update({ status: 'withdrawn' });
+    }
+  } catch (error) {
+    showDatabaseError(error);
+    return;
+  }
+
+  currentTour.checkedRooms[getRoomAuditKey(roomId)] = {
+    roomId: room.id,
+    roomName: room.name,
+    sector: currentSector,
+    missingCount: missingCount,
+    details: details,
+    surplus: surplus
+  };
+
+  saveTourDraft();
+  closeModal();
+  renderTour();
+}
+
+async function submitFullWarehouseAudit() {
+  if (submittingAudit) return;
+  const currentSectorRoomKeys = roomsData
+    .map(room => getRoomAuditKey(room.id))
+    .filter(key => Object.prototype.hasOwnProperty.call(currentTour.checkedRooms, key));
+  const allRoomsChecked = roomsData.length > 0 && currentSectorRoomKeys.length === roomsData.length;
+  if (!currentUser || !allRoomsChecked || currentSectorRoomKeys.length !== roomsData.length) {
+    alert('يجب إتمام جرد جميع الغرف قبل اعتماد التقرير.');
+    return;
+  }
+  submittingAudit = true;
+  let totalMissingAllRooms = 0;
+  let summary = [];
+  let hasAnySurplus = false;
+
+  currentSectorRoomKeys.forEach(key => {
+    const rData = currentTour.checkedRooms[key];
+    totalMissingAllRooms += rData.missingCount;
+    if (rData.surplus && rData.surplus.trim() !== '') {
+      hasAnySurplus = true;
+    }
+    summary.push(rData);
+  });
+
+  const currentSector = getActiveSector();
+  const durationMin = currentTour.startTime ? Math.max(1, Math.round((Date.now() - currentTour.startTime) / 60000)) : 1;
+
+  const auditDoc = {
+    inspectorName: currentUser.name,
+    inspectorId: currentUser.id,
+    sector: currentSector === 'all' ? 'كافة القطاعات' : currentSector,
+    timestamp: Date.now(),
+    date: new Date().toLocaleDateString('ar-EG') + ' ' + new Date().toLocaleTimeString('ar-EG', {hour:'2-digit', minute:'2-digit'}),
+    durationMinutes: durationMin,
+    totalRooms: roomsData.length,
+    totalMissing: totalMissingAllRooms,
+    hasSurplus: hasAnySurplus,
+    roomsSummary: summary
+  };
+
+  try {
+    await dbFirestore.collection('warehouse_audits').add(auditDoc);
+    alert(`تم حفظ تقرير الجرد بنجاح! قطاع: (${auditDoc.sector})`);
+    currentSectorRoomKeys.forEach(key => delete currentTour.checkedRooms[key]);
+    if (Object.keys(currentTour.checkedRooms).length === 0) {
+      currentTour = { startTime: null, checkedRooms: {} };
+      if (currentUser) {
+        try {
+          localStorage.removeItem(`wh_tour_draft_${currentUser.id}`);
+        } catch (error) {
+          console.warn('Could not remove the saved tour draft:', error);
+        }
+      }
+    } else {
+      saveTourDraft();
+    }
+    const tabLogs = document.getElementById('tabBtnLogs');
+    navigate('logs', tabLogs);
+  } catch (error) {
+    showDatabaseError(error);
+  } finally {
+    submittingAudit = false;
+  }
+}
+
+// 2. لوحة الإدارة
+function renderRoomsReference() {
+  const pendingSurplus = surplusData.filter(s => s.status === 'pending');
+
+  let html = `
+    <div class="card" style="border-color:rgba(16, 185, 129, 0.4); background:var(--success-bg);">
+      <div style="display:flex; justify-content:space-between; align-items:center;">
+        <div>
+          <div style="font-weight:900; font-size:16px; color:#166534;">أمان حسابك (${currentUser.name})</div>
+          <div style="font-size:13px; color:var(--text-muted); margin-top:4px; display:flex; align-items:center; gap:6px;">
+            <span>الرمز الحالي: <b id="adminPinMasked" style="font-family:monospace; letter-spacing:2px; color:var(--text-main);">••••</b></span>
+            <button class="top-icon-btn" style="width:28px; height:28px; font-size:11px;" onclick="secureToggleAdminPin('${currentUser.pin}')" title="إظهار/إخفاء">👁️</button>
+          </div>
+        </div>
+        <div style="display:flex; gap:6px;">
+          <button class="btn-dark" style="font-size:11px; padding:6px 10px;" onclick="openTransferModal()">مناقلة عهدة 🔄</button>
+          <button class="btn-primary" style="font-size:11px; padding:6px 10px;" onclick="openChangeMyPinModal()">تغيير رمزي 🔑</button>
+        </div>
+      </div>
+    </div>`;
+
+  // مركز المواد الزائدة السحابي
+  html += `
+    <div class="card" style="border: 1px solid ${pendingSurplus.length > 0 ? 'var(--primary-accent)' : 'var(--border-card)'}; background: var(--bg-card);">
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+        <div style="font-weight:900; font-size:15px; color:var(--primary-accent);">
+          📦 بلاغات المواد الزائدة (${pendingSurplus.length})
+        </div>
+      </div>`;
+
+  if (pendingSurplus.length === 0) {
+    html += `<div style="font-size:12px; color:var(--text-muted); text-align:center; padding:8px;">لا توجد مواد زائدة بانتظار الإجراء ✅</div>`;
+  } else {
+    html += `<div style="display:flex; flex-direction:column; gap:8px;">`;
+    pendingSurplus.forEach(item => {
+      html += `
+        <div style="background:var(--bg-base); border:1px solid var(--border-card); border-radius:14px; padding:10px; display:flex; flex-direction:column; gap:6px;">
+          <div style="display:flex; justify-content:space-between; align-items:flex-start;">
+            <div>
+              <span style="font-weight:900; font-size:13px; color:var(--text-main);">${item.roomName}:</span>
+              <span style="font-size:13px; color:var(--primary-accent); font-weight:800;">${item.itemName}</span>
+            </div>
+            <span class="sector-badge">القطاع: ${item.sector || 'عام'} • ${item.inspectorName}</span>
+          </div>
+          <div style="display:flex; justify-content:space-between; align-items:center;">
+            <small style="color:var(--text-muted); font-size:11px;">${item.date}</small>
+            <div style="display:flex; gap:6px;">
+              <button class="btn-primary" style="padding:5px 10px; font-size:11px; border-radius:10px;" onclick="adoptSurplusItem('${item.id}', '${item.roomId}', '${item.roomName}', '${item.sector||'أثاث ومفروشات'}')">اعتماد كعهدة 📥</button>
+              <button class="btn-danger" style="padding:5px 8px; font-size:11px; border-radius:10px;" onclick="dismissSurplusItem('${item.id}')">✕</button>
+            </div>
+          </div>
+        </div>`;
+    });
+    html += `</div>`;
+  }
+  html += `</div>`;
+
+  // التبويبات الداخلية المفصولة
+  html += `
+    <div style="display:flex; gap:8px; margin: 20px 0 14px; background:var(--bg-card); padding:6px; border-radius:18px; border:1px solid var(--border-card);">
+      <button class="btn-full ${adminSubTab==='rooms'?'btn-primary':'btn-light'}" style="border-radius:12px; padding:10px;" onclick="adminSubTab='rooms'; renderRoomsReference();">🚪 إدارة غرف المستودع (${roomsData.length})</button>
+      <button class="btn-full ${adminSubTab==='staff'?'btn-primary':'btn-light'}" style="border-radius:12px; padding:10px;" onclick="adminSubTab='staff'; renderRoomsReference();">👥 إدارة الموظفين والأشخاص (${usersData.length})</button>
+    </div>`;
+
+  if (adminSubTab === 'rooms') {
+    html += `
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+        <div style="font-weight:900; font-size:16px;">قائمة غرف المستودع والعهد</div>
+        <button class="btn-primary" style="font-size:12px; padding:7px 12px;" onclick="openAddRoomModal()">+ إضافة غرفة</button>
+      </div>
+      <div class="manager-rooms-grid" style="display:grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap:12px;">`;
+
+    roomsData.forEach(room => {
+      const roomIcon = room.icon || '🚪';
+      html += `
+        <div class="card" style="margin-bottom:0;">
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+            <div style="display:flex; align-items:center; gap:8px;">
+              <span style="font-size:24px;">${roomIcon}</span>
+              <div style="font-weight:900; font-size:16px;">${room.name}</div>
+            </div>
+            <button class="btn-light" style="font-size:11px; padding:6px 10px;" onclick="openEditRoomItemsModal('${room.id}')">العهدة والأيقونة ⚙️</button>
+          </div>
+          <div style="display:flex; justify-content:space-between; align-items:center; font-size:12px; color:var(--text-muted);">
+            <span>الأصناف: ${(room.items||[]).length} • القطع: ${(room.items||[]).reduce((a,b)=>a+b.qty,0)}</span>
+            <button class="btn-danger" style="padding:4px 8px; font-size:11px;" onclick="secureDeleteEntireRoom('${room.id}')">حذف الغرفة</button>
+          </div>
+        </div>`;
+    });
+    html += `</div>`;
+  } else {
+    html += `
+      <div class="card" style="margin-bottom:0;">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+          <div>
+            <div style="font-weight:900; font-size:16px;">قائمة الموظفين والصلاحيات (اضغط على الاسم)</div>
+            <div style="font-size:11px; color:var(--text-muted);">الملف الوظيفي وإحصائيات الأداء لكل شخص</div>
+          </div>
+          <button class="btn-primary" style="font-size:12px; padding:7px 12px;" onclick="openAddUserModal()">+ مستخدم جديد</button>
+        </div>
+        <div id="usersListContent">جاري جلب المستخدمين...</div>
+      </div>`;
+  }
+
+  document.getElementById('appView').innerHTML = html;
+  if (adminSubTab === 'staff') loadUsersList();
+}
+
+function openUserProfileModal(userId) {
+  const user = usersData.find(u => u.id === userId);
+  if (!user) return;
+
+  const userLogs = logsData.filter(l => l.inspectorId === user.id || l.inspectorName === user.name);
+  const totalTours = userLogs.length;
+  const lastTourDate = userLogs.length > 0 ? userLogs[0].date : 'لم يقم بأي جولة بعد';
+  const totalIssuesDetected = userLogs.reduce((acc, l) => acc + (l.totalMissing || 0), 0);
+  const totalSurplusReported = surplusData.filter(s => s.inspectorId === user.id || s.inspectorName === user.name).length;
+
+  let roleLabel = 'موظف جرد ميداني';
+  if (user.role === 'admin') roleLabel = 'مدير عام';
+  if (user.role === 'supervisor') roleLabel = 'مشرف متابعة وتقارير';
+
+  let sectorLabel = user.sector && user.sector !== 'all' ? user.sector : 'شامل لكافة الأقسام';
+
+  let html = `
+    <div style="background:var(--bg-base); border:1px solid var(--border-card); border-radius:20px; padding:18px; margin-bottom:14px; text-align:center;">
+      <div style="font-size:40px; margin-bottom:4px;">👤</div>
+      <h3 style="font-size:18px; font-weight:900;">${user.name}</h3>
+      <div style="display:flex; justify-content:center; gap:8px; margin-top:6px;">
+        <span class="sector-badge">${roleLabel}</span>
+        <span class="sector-badge" style="background:var(--success-bg); color:#166534; border-color:#bbf7d0;">القطاع: ${sectorLabel}</span>
+      </div>
+    </div>
+
+    <div class="stat-grid">
+      <div class="stat-card">
+        <div class="stat-val">${totalTours}</div>
+        <div class="stat-lbl">إجمالي الجولات المنجزة</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-val" style="color:var(--danger);">${totalIssuesDetected}</div>
+        <div class="stat-lbl">ملاحظات ونواقص رصدها</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-val" style="color:var(--success);">${totalSurplusReported}</div>
+        <div class="stat-lbl">مواد زائدة بلغ عنها</div>
+      </div>
+      <div class="stat-card">
+        <div style="font-size:12px; font-weight:900; margin-top:6px;">${lastTourDate}</div>
+        <div class="stat-lbl">تاريخ آخر جولة</div>
+      </div>
+    </div>
+
+    <div style="font-weight:900; font-size:14px; margin: 14px 0 6px; color:var(--text-muted);">آخر جولات الموظف:</div>
+    <div style="max-height:160px; overflow-y:auto; border:1px solid var(--border-card); border-radius:14px; padding:8px; margin-bottom:16px; background:var(--bg-base);">`;
+
+  if (userLogs.length === 0) {
+    html += `<div style="text-align:center; color:var(--text-muted); font-size:12px; padding:10px;">لا توجد جولات مسجلة باسم هذا الموظف.</div>`;
+  } else {
+    userLogs.slice(0, 5).forEach(l => {
+      const origIdx = logsData.indexOf(l);
+      html += `
+        <div style="padding:8px 6px; border-bottom:1px solid var(--border-card); display:flex; justify-content:space-between; align-items:center; cursor:pointer;" onclick="closeModal(); showTourDetails(${origIdx});">
+          <div>
+            <div style="font-size:12px; font-weight:800;">جولة: ${l.date}</div>
+            <small style="font-size:10px; color:var(--text-muted);">قطاع: ${l.sector || 'عام'}</small>
+          </div>
+          <span style="font-size:11px; font-weight:800; color:${l.totalMissing > 0 ? 'var(--danger)' : 'var(--success)'};">
+            ${l.totalMissing > 0 ? `نواقص: ${l.totalMissing}` : 'مطابق ✅'}
+          </span>
+        </div>`;
+    });
+  }
+
+  html += `</div>
+
+    <div style="display:grid; grid-template-columns: 1fr 1fr; gap:8px;">
+      <button class="btn-light" onclick="openEditUserSectorModal('${user.id}')">تعديل التخصص والبيانات ⚙️</button>
+      <button class="btn-dark" onclick="closeModal()">إغلاق الملف</button>
+    </div>`;
+
+  openModal(`الملف الوظيفي: ${user.name}`, html);
+}
+
+function openEditUserSectorModal(userId) {
+  const user = usersData.find(u => u.id === userId);
+  if (!user) return;
+
+  openModal(`تعديل بيانات: ${user.name}`, `
+    <label>الاسم الكامل:</label>
+    <input type="text" id="editUserName" value="${user.name}">
+
+    <label>الدور الوظيفي:</label>
+    <select id="editUserRole">
+      <option value="staff" ${user.role==='staff'?'selected':''}>موظف جرد ميداني</option>
+      <option value="supervisor" ${user.role==='supervisor'?'selected':''}>مشرف متابعة (الاطلاع على التقارير)</option>
+    </select>
+
+    <label>قطاع / قسم الجرد المسند إليه:</label>
+    <select id="editUserSector">
+      <option value="أجهزة وتقنية" ${user.sector==='أجهزة وتقنية'?'selected':''}>أجهزة وتقنية 💻 (لابتوبات، راوترات، شاشات)</option>
+      <option value="أثاث ومفروشات" ${(user.sector||'أثاث ومفروشات')==='أثاث ومفروشات'?'selected':''}>أثاث ومفروشات 🛏️ (إسفنج، أسرة، كراسي)</option>
+      <option value="تجهيزات عامة" ${user.sector==='تجهيزات عامة'?'selected':''}>تجهيزات عامة 📦</option>
+      <option value="all" ${user.sector==='all'?'selected':''}>شامل لكافة الأقسام</option>
+    </select>
+
+    <label>رمز الـ PIN المخصص له:</label>
+    <input type="number" id="editUserPin" value="${user.pin}">
+
+    <div style="margin-top:20px;">
+      <button class="btn-primary btn-full" onclick="saveUserUpdates('${user.id}')">حفظ التعديلات في السحاب 💾</button>
+    </div>
+  `);
+}
+
+function saveUserUpdates(userId) {
+  const name = document.getElementById('editUserName').value.trim();
+  const role = document.getElementById('editUserRole').value;
+  const sector = document.getElementById('editUserSector').value;
+  const pin = document.getElementById('editUserPin').value.trim();
+
+  if (!name || !/^\d{4,}$/.test(pin)) {
+    alert('أدخل الاسم ورمز PIN مكوّناً من أربعة أرقام على الأقل.');
+    return;
+  }
+  if (usersData.some(user => user.id !== userId && String(user.pin).trim() === pin)) {
+    alert('رمز PIN مستخدم بالفعل. اختر رمزاً آخر.');
+    return;
+  }
+
+  dbFirestore.collection('warehouse_users').doc(userId).update({
+    name: name,
+    role: role,
+    sector: sector,
+    pin: pin
+  }).then(() => {
+    alert('تم تحديث بيانات وتخصص الموظف بنجاح!');
+    closeModal();
+    openUserProfileModal(userId);
+  }).catch(showDatabaseError);
+}
+
+function adoptSurplusItem(surplusId, roomId, roomName, sector) {
+  if (!currentUser || currentUser.role !== 'admin') return;
+  const item = surplusData.find(s => s.id === surplusId);
+  if (!item) return;
+
+  const room = roomsData.find(r => r.id === roomId || r.name === roomName);
+  if (!room) {
+    alert('لم يتم العثور على الغرفة!');
+    return;
+  }
+
+  const updatedItems = [...(room.items || [])];
+  updatedItems.push({
+    id: Date.now(),
+    name: item.itemName,
+    qty: 1,
+    icon: sector === 'أجهزة وتقنية' ? '💻' : '📦',
+    sector: sector || 'أثاث ومفروشات',
+    isSerialized: false
+  });
+
+  const batch = dbFirestore.batch();
+  batch.update(dbFirestore.collection('warehouse_rooms').doc(room.id), { items: updatedItems });
+  batch.update(dbFirestore.collection('warehouse_surplus').doc(surplusId), { status: 'adopted' });
+
+  batch.commit().then(() => {
+    alert(`تم بنجاح اعتماد [${item.itemName}] في قطاع (${sector}) بغرفة ${room.name}!`);
+  }).catch(showDatabaseError);
+}
+
+function dismissSurplusItem(surplusId) {
+  if (!currentUser || currentUser.role !== 'admin') return;
+  dbFirestore.collection('warehouse_surplus').doc(surplusId).update({ status: 'dismissed' }).then(() => {
+    alert('تم إغلاق البلاغ بنجاح.');
+  }).catch(showDatabaseError);
+}
+
+function secureToggleAdminPin(pin) {
+  const el = document.getElementById('adminPinMasked');
+  if (!el) return;
+  if (el.textContent === '••••') {
+    requireAdminVerification(() => {
+      el.textContent = pin;
+      el.style.letterSpacing = 'normal';
+    });
+  } else {
+    el.textContent = '••••';
+    el.style.letterSpacing = '2px';
+  }
+}
+
+function secureToggleUserPin(userId, pin) {
+  const el = document.getElementById(`pin_span_${userId}`);
+  if (!el) return;
+  if (el.textContent === '••••') {
+    requireAdminVerification(() => {
+      el.textContent = pin;
+      el.style.letterSpacing = 'normal';
+    });
+  } else {
+    el.textContent = '••••';
+    el.style.letterSpacing = '2px';
+  }
+}
+
+function loadUsersList() {
+  let uHtml = '';
+  usersData.forEach(u => {
+    const isMe = currentUser && currentUser.id === u.id;
+    let sectorText = u.sector && u.sector !== 'all' ? u.sector : (u.role === 'admin' ? 'إدارة عامة' : 'شامل الأقسام');
+
+    uHtml += `
+      <div style="display:flex; justify-content:space-between; align-items:center; padding:12px 0; border-bottom:1px solid var(--border-card);">
+        <div style="cursor:pointer; flex:1;" onclick="openUserProfileModal('${u.id}')">
+          <div style="display:flex; align-items:center; gap:6px;">
+            <b style="color:var(--primary-accent); text-decoration:underline;">${u.name}</b>
+            <span class="sector-badge">${sectorText}</span>
+          </div>
+          <div style="display:flex; align-items:center; gap:6px; margin-top:4px;">
+            <span style="font-size:12px; color:var(--text-muted);">الرمز:</span>
+            <span id="pin_span_${u.id}" style="font-family:monospace; font-size:13px; font-weight:900; color:var(--primary-accent); letter-spacing:2px;">••••</span>
+            <button class="top-icon-btn" style="width:26px; height:26px; font-size:11px;" onclick="event.stopPropagation(); secureToggleUserPin('${u.id}', '${u.pin}')" title="إظهار/إخفاء">👁️</button>
+            <span style="font-size:11px; color:var(--text-muted); margin-right:4px;">(اضغط للتفاصيل 👤)</span>
+          </div>
+        </div>
+        <div style="display:flex; gap:6px;">
+          <button class="btn-light" style="padding:6px 10px; font-size:12px;" onclick="openEditUserSectorModal('${u.id}')">تعديل ⚙️</button>
+          <button class="btn-dark" style="padding:6px 10px; font-size:12px;" onclick="openUserProfileModal('${u.id}')">الملف 📊</button>
+          ${!isMe ? `<button class="btn-danger" style="padding:6px 10px; font-size:12px;" onclick="secureDeleteStaffUser('${u.id}')">حذف</button>` : ''}
+        </div>
+      </div>`;
+  });
+  const container = document.getElementById('usersListContent');
+  if (container) container.innerHTML = uHtml || '<div style="color:var(--text-muted); padding:10px;">لا يوجد مستخدمين</div>';
+}
+
+function secureDeleteStaffUser(userId) {
+  requireAdminVerification(() => {
+    const user = usersData.find(entry => entry.id === userId);
+    if (!user || user.id === currentUser.id) return;
+    openModal('تأكيد حذف الحساب', `
+      <p style="font-size:14px; line-height:1.8; margin:8px 0 20px;">
+        هل تريد حذف حساب <b>${user.name}</b> نهائياً؟ لا يمكن التراجع عن هذا الإجراء.
+      </p>
+      <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px;">
+        <button class="btn-dark" onclick="closeModal()">إلغاء</button>
+        <button class="btn-danger" onclick="deleteStaffUser('${user.id}')">حذف الحساب نهائياً</button>
+      </div>
+    `);
+  });
+}
+
+function deleteStaffUser(userId) {
+  if (!currentUser || currentUser.role !== 'admin' || userId === currentUser.id) return;
+  dbFirestore.collection('warehouse_users').doc(userId).delete()
+    .then(() => {
+      closeModal();
+      alert('تم حذف الحساب بنجاح.');
+    })
+    .catch(showDatabaseError);
+}
+
+function secureDeleteEntireRoom(roomId) {
+  requireAdminVerification(() => {
+    if (confirm('تحذير: هل أنت متأكد من حذف هذه الغرفة بكافة أعيانها نهائياً من المستودع؟')) {
+      dbFirestore.collection('warehouse_rooms').doc(roomId).delete().then(() => {
+        renderRoomsReference();
+      }).catch(showDatabaseError);
+    }
+  });
+}
+
+function saveRoomName(roomId) {
+  const newName = document.getElementById('renameRoomInput').value.trim();
+  if (!newName) return;
+
+  dbFirestore.collection('warehouse_rooms').doc(roomId).update({ name: newName }).then(() => {
+    alert('تم تعديل اسم الغرفة بنجاح!');
+    closeModal();
+  }).catch(showDatabaseError);
+}
+
+function setPickedRoomIcon(icon) {
+  document.getElementById('editRoomSelectedIcon').value = icon;
+  document.querySelectorAll('.icon-picker-grid .icon-opt').forEach(opt => {
+    opt.classList.remove('selected');
+    if (opt.textContent.trim() === icon) opt.classList.add('selected');
+  });
+}
+
+function saveRoomNameAndIcon(roomId) {
+  const newName = document.getElementById('renameRoomInput').value.trim();
+  const newIcon = document.getElementById('editRoomSelectedIcon').value.trim() || '🚪';
+  if (!newName) return;
+
+  dbFirestore.collection('warehouse_rooms').doc(roomId).update({
+    name: newName,
+    icon: newIcon
+  }).then(() => {
+    alert('تم تحديث اسم وأيقونة الغرفة بنجاح!');
+    closeModal();
+  }).catch(showDatabaseError);
+}
+
+function openEditRoomItemsModal(roomId) {
+  const room = roomsData.find(r => r.id === roomId);
+  if (!room) return;
+
+  const roomIcon = room.icon || '🚪';
+  const availableIcons = ['🚪', '📦', '🏢', '🛏️', '💻', '⚡', '🔒', '🗄️', '🛠️', '🧰', '📡', '🛋️'];
+
+  const items = room.items || [];
+  let html = `
+    <div style="margin-bottom:16px; background:var(--bg-base); padding:14px; border-radius:16px; border:1px solid var(--border-card);">
+      <label style="margin-top:0;">تعديل اسم الغرفة وأيقونتها:</label>
+      <div style="display:flex; gap:8px; margin-bottom:10px;">
+        <input type="text" id="renameRoomInput" value="${room.name}">
+        <input type="hidden" id="editRoomSelectedIcon" value="${roomIcon}">
+        <button class="btn-dark" style="white-space:nowrap;" onclick="saveRoomNameAndIcon('${room.id}')">حفظ الاسم والأيقونة</button>
+      </div>
+
+      <small style="color:var(--text-muted); font-size:11px;">اختر أيقونة الغرفة:</small>
+      <div class="icon-picker-grid">
+        ${availableIcons.map(ic => `
+          <div class="icon-opt ${ic === roomIcon ? 'selected' : ''}" onclick="setPickedRoomIcon('${ic}')">
+            ${ic}
+          </div>
+        `).join('')}
+      </div>
+    </div>
+
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+      <div style="font-weight:900; font-size:15px;">الأغراض والقطاعات المرجعية:</div>
+      <button class="btn-primary" style="font-size:12px; padding:6px 12px;" onclick="openAddItemToRoomModal('${room.id}')">+ غرض جديد</button>
+    </div>
+
+    <div style="max-height:340px; overflow-y:auto;">`;
+
+  if (items.length === 0) {
+    html += `<div style="text-align:center; color:var(--text-muted); padding:15px;">لا توجد أغراض في هذه الغرفة.</div>`;
+  } else {
+    items.forEach(itm => {
+      let serialsText = '';
+      if (itm.isSerialized && itm.serials) {
+        serialsText = `<div style="margin-top:4px;">${itm.serials.map(s => `<span class="serial-badge"># ${s}</span>`).join('')}</div>`;
+      }
+
+      html += `
+        <div class="item-row" style="border-bottom:1px solid var(--border-card); padding:12px 0;">
+          <div style="display:flex; align-items:flex-start; gap:10px;">
+            <span style="font-size:24px; margin-top:2px;">${itm.icon || '📦'}</span>
+            <div>
+              <div style="display:flex; align-items:center; gap:6px;">
+                <span style="font-weight:900; font-size:14px;">${itm.name}</span>
+                <span class="sector-badge">${itm.sector || 'أثاث ومفروشات'}</span>
+              </div>
+              <div style="font-size:12px; color:var(--text-muted); margin-top:2px;">الكمية: <b>${itm.qty}</b> ${itm.isSerialized ? '(مكود)' : ''}</div>
+              ${serialsText}
+            </div>
+          </div>
+          <div style="display:flex; gap:6px;">
+            <button class="btn-light" style="padding:6px 10px; font-size:12px;" onclick="openEditItemModal('${room.id}', ${itm.id})">تعديل</button>
+            <button class="btn-danger" style="padding:6px 10px; font-size:12px;" onclick="deleteItemFromRoom('${room.id}', ${itm.id})">حذف</button>
+          </div>
+        </div>`;
+    });
+  }
+
+  html += `</div>`;
+  openModal(`إدارة عهدة: ${room.name}`, html);
+}
+
+function openAddItemToRoomModal(roomId) {
+  openModal('إضافة صنف جديد للغرفة', `
+    <label>اسم الغرض</label>
+    <input type="text" id="newItemName" placeholder="مثلاً: لابتوب، إسفنجة، كرسي">
+    
+    <label>قسم / قطاع العهدة:</label>
+    <select id="newItemSector">
+      <option value="أثاث ومفروشات">أثاث ومفروشات 🛏️</option>
+      <option value="أجهزة وتقنية">أجهزة وتقنية 💻</option>
+      <option value="تجهيزات عامة">تجهيزات عامة 📦</option>
+    </select>
+
+    <label style="display:flex; align-items:center; gap:8px; margin:12px 0 6px; cursor:pointer;">
+      <input type="checkbox" id="newItemIsSerialized" onchange="toggleSerialInputs(this.checked)" style="width:auto;">
+      <span>أصل مكود برقم تسلسلي لكل قطعة؟</span>
+    </label>
+
+    <div id="bulkQtyBox">
+      <label>الكمية المرجعية الإجمالية</label>
+      <input type="number" id="newItemQty" value="1" min="1">
+    </div>
+
+    <div id="serialQtyBox" style="display:none; background:var(--bg-base); padding:10px; border-radius:12px; border:1px solid var(--border-card);">
+      <label style="margin-top:0;">الأرقام التسلسلية (مفصولة بفاصلة):</label>
+      <input type="text" id="newItemSerials" placeholder="مثلاً: LP-01, LP-02">
+    </div>
+
+    <label>رمز الأيقونة (إيموجي)</label>
+    <input type="text" id="newItemIcon" value="📦">
+    
+    <div style="margin-top:20px;">
+      <button class="btn-primary btn-full" onclick="saveItemToRoom('${roomId}')">إضافة وحفظ 💾</button>
+    </div>
+  `);
+}
+
+function toggleSerialInputs(isSerialized) {
+  document.getElementById('bulkQtyBox').style.display = isSerialized ? 'none' : 'block';
+  document.getElementById('serialQtyBox').style.display = isSerialized ? 'block' : 'none';
+}
+
+function openEditItemModal(roomId, itemId) {
+  const room = roomsData.find(r => r.id === roomId);
+  if (!room) return;
+  const itm = (room.items || []).find(i => i.id === itemId);
+  if (!itm) return;
+
+  const serialsStr = (itm.serials || []).join(', ');
+
+  openModal('تعديل الصنف والكمية', `
+    <label>اسم الصنف</label>
+    <input type="text" id="editItemName" value="${itm.name}">
+    
+    <label>قسم / قطاع العهدة:</label>
+    <select id="editItemSector">
+      <option value="أثاث ومفروشات" ${(itm.sector||'أثاث ومفروشات')==='أثاث ومفروشات'?'selected':''}>أثاث ومفروشات 🛏️</option>
+      <option value="أجهزة وتقنية" ${itm.sector==='أجهزة وتقنية'?'selected':''}>أجهزة وتقنية 💻</option>
+      <option value="تجهيزات عامة" ${itm.sector==='تجهيزات عامة'?'selected':''}>تجهيزات عامة 📦</option>
+    </select>
+
+    <label style="display:flex; align-items:center; gap:8px; margin:12px 0 6px; cursor:pointer;">
+      <input type="checkbox" id="editItemIsSerialized" ${itm.isSerialized ? 'checked' : ''} onchange="toggleEditSerialInputs(this.checked)" style="width:auto;">
+      <span>أصل مكود برقم تسلسلي؟</span>
+    </label>
+
+    <div id="editBulkQtyBox" style="display:${itm.isSerialized ? 'none' : 'block'};">
+      <label>الكمية المرجعية</label>
+      <input type="number" id="editItemQty" value="${itm.qty}" min="1">
+    </div>
+
+    <div id="editSerialQtyBox" style="display:${itm.isSerialized ? 'block' : 'none'}; background:var(--bg-base); padding:10px; border-radius:12px; border:1px solid var(--border-card);">
+      <label style="margin-top:0;">الأرقام التسلسلية (مفصولة بفاصلة):</label>
+      <input type="text" id="editItemSerials" value="${serialsStr}">
+    </div>
+
+    <label>الأيقونة</label>
+    <input type="text" id="editItemIcon" value="${itm.icon || '📦'}">
+    
+    <div style="margin-top:20px;">
+      <button class="btn-primary btn-full" onclick="updateItemInRoom('${roomId}', ${itm.id})">حفظ التعديل 💾</button>
+    </div>
+  `);
+}
+
+function toggleEditSerialInputs(isSerialized) {
+  document.getElementById('editBulkQtyBox').style.display = isSerialized ? 'none' : 'block';
+  document.getElementById('editSerialQtyBox').style.display = isSerialized ? 'block' : 'none';
+}
+
+function openAddUserModal() {
+  openModal('إضافة مستخدم جديد وتحديد قطاعه', `
+    <label>اسم الشخص</label>
+    <input type="text" id="newStaffName" placeholder="مثلاً: خليل">
+    
+    <label>صلاحية الحساب:</label>
+    <select id="newStaffRole">
+      <option value="staff">موظف جرد (إجراء الجولات فقط)</option>
+      <option value="supervisor">مشرف متابعة (الاطلاع على التقارير فقط)</option>
+    </select>
+
+    <label>قطاع / قسم الجرد المخصص له:</label>
+    <select id="newStaffSector">
+      <option value="أجهزة وتقنية">أجهزة وتقنية 💻 (لابتوبات، راوترات، شاشات)</option>
+      <option value="أثاث ومفروشات">أثاث ومفروشات 🛏️ (إسفنج، أسرة، كراسي)</option>
+      <option value="تجهيزات عامة">تجهيزات عامة 📦</option>
+      <option value="all">شامل لكافة الأقسام (كل شيء)</option>
+    </select>
+
+    <label>رمز الـ PIN المخصص له:</label>
+    <input type="number" id="newStaffPin" placeholder="4 أرقام على الأقل">
+    
+    <div style="margin-top:20px;">
+      <button class="btn-primary btn-full" onclick="saveNewStaff()">حفظ المستخدم ✓</button>
+    </div>
+  `);
+}
+
+function saveNewStaff() {
+  const name = document.getElementById('newStaffName').value.trim();
+  const role = document.getElementById('newStaffRole').value;
+  const sector = document.getElementById('newStaffSector').value;
+  const pin = document.getElementById('newStaffPin').value.trim();
+  if (!name || !/^\d{4,}$/.test(pin)) {
+    alert('أدخل الاسم ورمز PIN مكوّناً من أربعة أرقام على الأقل.');
+    return;
+  }
+  if (usersData.some(user => String(user.pin).trim() === pin)) {
+    alert('رمز PIN مستخدم بالفعل. اختر رمزاً آخر.');
+    return;
+  }
+
+  dbFirestore.collection('warehouse_users').add({
+    name: name,
+    role: role,
+    sector: sector,
+    pin: pin
+  }).then(() => {
+    closeModal();
+    renderRoomsReference();
+  }).catch(showDatabaseError);
+}
+
+// 3. السجلات والتقارير
+function setLogFilter(type) {
+  logFilterType = type;
+  renderLogs();
+}
+
+function setStaffFilter(staffName) {
+  logFilterStaff = staffName;
+  renderLogs();
+}
+
+function renderLogs() {
+  const isStaff = currentUser && currentUser.role === 'staff';
+
+  let baseLogs = logsData;
+  if (isStaff) {
+    baseLogs = logsData.filter(l => l.inspectorId === currentUser.id || l.inspectorName === currentUser.name);
+  }
+
+  const inspectors = Array.from(new Set(baseLogs.map(l => l.inspectorName))).filter(Boolean);
+
+  let filtered = baseLogs.filter(l => {
+    if (!isStaff) {
+      const matchStaff = logFilterStaff === 'all' || l.inspectorName === logFilterStaff;
+      if (!matchStaff) return false;
+    }
+
+    if (logFilterType === 'issues') return l.totalMissing > 0;
+    if (logFilterType === 'ok') return l.totalMissing === 0 && !l.hasSurplus;
+    if (logFilterType === 'surplus') return !!l.hasSurplus;
+    return true;
+  });
+
+  let html = `
+    <div style="font-weight:900; font-size:18px; margin-bottom:4px;">
+      ${isStaff ? 'سجل جولاتي التفتيشية' : 'سجلات وتقارير المستودع الشاملة'}
+    </div>
+    <div style="font-size:12px; color:var(--text-muted); margin-bottom:14px;">
+      ${isStaff ? 'استعراض جولاتك السابقة فقط' : 'متابعة تفصيلية لجولات كافة الموظفين'}
+    </div>
+    
+    <div class="filter-bar">
+      <div class="filter-chip ${logFilterType==='all'?'active':''}" onclick="setLogFilter('all')">الكل (${baseLogs.length})</div>
+      <div class="filter-chip ${logFilterType==='issues'?'active':''}" onclick="setLogFilter('issues')">نواقص وتلفيات ⚠️</div>
+      <div class="filter-chip ${logFilterType==='surplus'?'active':''}" onclick="setLogFilter('surplus')">مواد زائدة فقط ➕</div>
+      <div class="filter-chip ${logFilterType==='ok'?'active':''}" onclick="setLogFilter('ok')">مطابقة تماماً ✅</div>
+    </div>`;
+
+  if (!isStaff) {
+    html += `
+      <div style="margin-bottom:14px;">
+        <select onchange="setStaffFilter(this.value)" style="font-size:13px; padding:8px 12px; border-radius:12px;">
+          <option value="all" ${logFilterStaff==='all'?'selected':''}>جميع الموظفين والمفتشين</option>
+          ${inspectors.map(name => `<option value="${name}" ${logFilterStaff===name?'selected':''}>جولات: ${name}</option>`).join('')}
+        </select>
+      </div>`;
+  }
+
+  html += `<div class="card">`;
+
+  if (filtered.length === 0) {
+    html += `<div style="text-align:center; color:var(--text-muted); padding:24px;">لا توجد تقارير مسجلة مطابقة.</div>`;
+  } else {
+    filtered.forEach((l, idx) => {
+      const originalIndex = logsData.indexOf(l);
+      const hasMissing = l.totalMissing > 0;
+      const hasSurplus = !!l.hasSurplus;
+
+      html += `
+        <div style="padding:14px 0; border-bottom:1px solid var(--border-card); cursor:pointer;" onclick="showTourDetails(${originalIndex})">
+          <div style="display:flex; justify-content:space-between; align-items:center;">
+            <div>
+              <div style="display:flex; align-items:center; gap:6px;">
+                <span style="font-weight:900; font-size:15px;">جولة: ${l.inspectorName}</span>
+                <span class="sector-badge">${l.sector || 'عام'}</span>
+              </div>
+              <div style="font-size:12px; color:var(--text-muted); margin-top:2px;">${l.date} • ${l.durationMinutes || 1} دقيقة</div>
+              ${hasSurplus ? `<span class="surplus-tag">➕ وُجدت مواد زائدة</span>` : ''}
+            </div>
+            <div style="text-align:left;">
+              ${hasMissing ? `<span style="color:var(--danger); font-weight:900; font-size:13px;">نواقص: ${l.totalMissing} ⚠️</span>` : `<span style="color:var(--success); font-weight:900; font-size:13px;">مطابق ✅</span>`}
+            </div>
+          </div>
+        </div>`;
+    });
+  }
+
+  html += `</div>`;
+  document.getElementById('appView').innerHTML = html;
+}
+
+function showTourDetails(index) {
+  const log = logsData[index];
+  if (!log) return;
+
+  let reportText = `تقرير جرد مستودع شامل\nالمفتش: ${log.inspectorName}\nالقطاع: ${log.sector || 'عام'}\nالتاريخ: ${log.date}\nالمدة: ${log.durationMinutes || 1} دقيقة\nإجمالي النواقص: ${log.totalMissing}\n--------------------\n`;
+
+  let html = `
+    <div style="background:var(--bg-base); border:1px solid var(--border-card); padding:16px; border-radius:18px; margin-bottom:16px; font-size:13px;">
+      <div style="display:flex; justify-content:space-between; margin-bottom:4px;">
+        <div><b>المفتش:</b> ${log.inspectorName}</div>
+        <div><b>المدة:</b> ${log.durationMinutes || 1} دقيقة</div>
+      </div>
+      <div><b>القطاع:</b> <span class="sector-badge">${log.sector || 'عام'}</span></div>
+      <div style="margin-top:4px;"><b>التاريخ:</b> ${log.date}</div>
+      <div style="margin-top:4px;"><b>النتيجة:</b> ${log.totalMissing > 0 ? `توجد نواقص (${log.totalMissing})` : 'سليم ومطابق'}</div>
+    </div>
+    <div style="font-weight:900; font-size:15px; margin-bottom:10px; color:var(--text-muted);">تفاصيل الغرف:</div>`;
+
+  (log.roomsSummary || []).forEach(r => {
+    let rDetails = '';
+    let surplusText = r.surplus ? `[مواد زائدة: ${r.surplus}]` : '';
+
+    if (r.details && r.details.length > 0) {
+      rDetails = r.details.map(d => {
+        let txt = `${d.name} (${d.status || 'نقص'}: ${d.count})`;
+        if (d.note) txt += ` [ملاحظة: ${d.note}]`;
+        return txt;
+      }).join('، ');
+
+      reportText += `• ${r.roomName}: [${rDetails}] ${surplusText}\n`;
+    } else {
+      reportText += `• ${r.roomName}: مطابق تماماً ✅ ${surplusText}\n`;
+    }
+
+    html += `
+      <div style="padding:10px 0; border-bottom:1px solid var(--border-card); font-size:13px;">
+        <div style="font-weight:800;">${r.roomName}: ${r.missingCount > 0 ? `<span style="color:var(--danger);">توجد ملاحظات</span>` : '<span style="color:var(--success);">مطابق</span>'}</div>
+        ${rDetails ? `<div style="font-size:12px; color:var(--danger); margin-top:2px;">${rDetails}</div>` : ''}
+        ${r.surplus ? `<div style="font-size:12px; color:var(--primary-accent); margin-top:2px;">➕ مواد زائدة: ${r.surplus}</div>` : ''}
+      </div>`;
+  });
+
+  const encoded = encodeURIComponent(reportText);
+
+  html += `
+    <div style="margin-top:20px; display:flex; flex-direction:column; gap:8px;">
+      <a href="https://api.whatsapp.com/send?text=${encoded}" class="btn-success btn-full" style="text-decoration:none; text-align:center;">إرسال تقرير المستودع لواتساب 💬</a>
+      <button class="btn-dark btn-full" onclick="closeModal()">إغلاق</button>
+    </div>`;
+
+  openModal('تفاصيل جولة المستودع', html);
+}
+
+function openModal(title, content) {
+  document.getElementById('modalTitle').textContent = title;
+  document.getElementById('modalContent').innerHTML = content;
+  const overlay = document.getElementById('modalOverlay');
+  overlay.classList.add('active');
+}
+
+function closeModal() {
+  const overlay = document.getElementById('modalOverlay');
+  overlay.classList.remove('active');
+}
+
+function handleOverlayClick(event) {
+  if (event.target === document.getElementById('modalOverlay')) {
+    closeModal();
+  }
+}
+
+initDatabase();
+</script>
+</body>
+</html>
